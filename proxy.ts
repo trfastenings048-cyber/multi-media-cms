@@ -9,16 +9,27 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hasSession = request.cookies.has(SESSION_COOKIE)
 
-  // Allow static files, api routes, Next.js internal assets, and the public
-  // screen viewer (/view/screen/*) used by the desktop player. Only admin pages need a session.
+  // Public: Next.js internals, static files, the screen viewer (/view/*), sign-in/out APIs,
+  // and read-only screen APIs used by the desktop player (GET /api/screens/**).
+  const isReadOnly = request.method === 'GET' || request.method === 'HEAD'
+  const isPublicApi =
+    pathname.startsWith('/api/auth') || (isReadOnly && pathname.startsWith('/api/screens'))
+
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
     pathname.startsWith('/view') ||
     pathname.includes('.') ||
-    pathname === '/favicon.ico'
+    pathname === '/favicon.ico' ||
+    isPublicApi
   ) {
     return NextResponse.next()
+  }
+
+  // Every other API route (uploads, documents, playlists, any write) needs a session.
+  if (pathname.startsWith('/api')) {
+    return hasSession
+      ? NextResponse.next()
+      : NextResponse.json({ error: 'Not signed in' }, { status: 401 })
   }
 
   // Redirect unauthenticated requests to login page

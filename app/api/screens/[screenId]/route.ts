@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireUser } from '@/lib/auth'
+import { publishScreenChanged } from '@/lib/realtime'
 
 export async function GET(
   _req: NextRequest,
@@ -26,6 +28,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ screenId: string }> }
 ) {
+  const denied = await requireUser()
+  if (denied) return denied
+
   try {
     const { screenId } = await params
     const body = await request.json()
@@ -50,11 +55,15 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ screenId: string }> }
 ) {
+  const denied = await requireUser()
+  if (denied) return denied
+
   try {
     const { screenId } = await params
     await prisma.screen.delete({
       where: { id: screenId },
     })
+    await publishScreenChanged(screenId)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[screens DELETE]', error)

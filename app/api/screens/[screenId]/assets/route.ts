@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireUser } from '@/lib/auth'
+import { publishScreenChanged } from '@/lib/realtime'
 
 export async function GET(
   _request: NextRequest,
@@ -24,6 +26,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ screenId: string }> }
 ) {
+  const denied = await requireUser()
+  if (denied) return denied
+
   try {
     const { screenId } = await params
     const body = await request.json() as { documentId?: string }
@@ -62,6 +67,7 @@ export async function POST(
       include: { document: true },
     })
 
+    await publishScreenChanged(screenId)
     return NextResponse.json(asset, { status: 201 })
   } catch (error) {
     console.error('[screen assets POST]', error)

@@ -34,5 +34,8 @@
       "target": "portable",
       "artifactName": "XOS-${version}.exe"
     }
+  },
+  "dependencies": {
+    "ably": "^2.29.0"
   }
 }

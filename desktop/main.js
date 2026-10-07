@@ -4,11 +4,17 @@ const path = require('path')
 const { Readable } = require('stream')
 const { pipeline } = require('stream/promises')
 const { pathToFileURL } = require('url')
+const Ably = require('ably')
 
-// No polling and no retry loops. On every launch the player fetches what is assigned to the
-// screen ONCE, saves it to local disk, and plays from the local copy. If the server cannot
-// be reached it plays the last saved copy. Changes in the CMS show up on the next launch.
+// No polling and no retry loops. The player syncs what is assigned to its screen ONCE per
+// launch, saves it to local disk, and plays from the local copy. If the server cannot be
+// reached it plays the last saved copy. While running it holds one idle connection to Ably
+// (realtime service, not the CMS); when content changes in the CMS, Ably delivers a
+// "changed" nudge and the player does the same one-time sync again, swapping the content in
+// only once the new file is fully downloaded.
 const REQUEST_TIMEOUT_MS = 20_000
+// Wait this long after a nudge so a burst of changes collapses into a single sync.
+const SYNC_DEBOUNCE_MS = 2_500
 
 let win = null
 let contentView = null
@@ -145,20 +151,104 @@ function showAsset(asset) {
   show({ kind, name: asset.name || '', src: asset.url || pathToFileURL(asset.file).href })
 }
 
-// Sync once, then play from local. Used on every launch and after the Screen ID is entered.
-async function loadScreen() {
-  const { serverUrl, screenId } = current
-  let asset
+let lastShownKey = null
+let syncing = false
+let syncQueued = false
+let lastSyncOk = false
+
+function assetKey(asset) {
+  return JSON.stringify(asset || null)
+}
+
+// Sync once, then play from local. Used on launch (live = false) and when Ably says the
+// content changed (live = true). A live sync never replaces what is playing with an error,
+// and skips the reload when nothing actually changed.
+async function loadScreen(live = false) {
+  if (syncing) {
+    syncQueued = true
+    return
+  }
+  syncing = true
+  const target = current
   try {
-    asset = await syncContent(current)
-  } catch (error) {
-    console.error('Sync failed, using saved copy', error)
-    asset = readSavedContent(screenId)
-    if (asset === undefined) {
-      return show({ kind: 'message', text: 'Could not reach the server and nothing is saved yet. Press Ctrl+R to try again.' })
+    let asset
+    try {
+      asset = await syncContent(target)
+      lastSyncOk = true
+    } catch (error) {
+      lastSyncOk = false
+      console.error('Sync failed, using saved copy', error)
+      if (live) return
+      asset = readSavedContent(target.screenId)
+      if (asset === undefined) {
+        lastShownKey = null
+        return show({ kind: 'message', text: 'Could not reach the server and nothing is saved yet. Press Ctrl+R to try again.' })
+      }
+    }
+    if (current !== target) return // screen was switched while syncing
+    if (live && assetKey(asset) === lastShownKey) return
+    lastShownKey = assetKey(asset)
+    showAsset(asset)
+  } finally {
+    syncing = false
+    if (syncQueued) {
+      syncQueued = false
+      loadScreen(true)
     }
   }
-  showAsset(asset)
+}
+
+// ── Realtime nudges (Ably) ────────────────────────────────────────────────────
+
+const realtimeCachePath = () => path.join(app.getPath('userData'), 'realtime.json')
+let realtimeClient = null
+let syncDebounce = null
+
+function scheduleLiveSync() {
+  clearTimeout(syncDebounce)
+  syncDebounce = setTimeout(() => {
+    if (current) loadScreen(true)
+  }, SYNC_DEBOUNCE_MS)
+}
+
+function stopRealtime() {
+  clearTimeout(syncDebounce)
+  if (realtimeClient) {
+    try { realtimeClient.close() } catch {}
+    realtimeClient = null
+  }
+}
+
+// Ask the CMS once which channel/key to use (cached for offline launches), then subscribe.
+async function startRealtime() {
+  stopRealtime()
+  const target = current
+  if (!target) return
+
+  let info
+  try {
+    info = await fetchJson(`${target.serverUrl}/api/screens/${encodeURIComponent(target.screenId)}/realtime`)
+    if (info?.key) fs.writeFileSync(realtimeCachePath(), JSON.stringify({ ...info, serverUrl: target.serverUrl, screenId: target.screenId }))
+  } catch {
+    const cached = readJson(realtimeCachePath())
+    if (cached.serverUrl === target.serverUrl && cached.screenId === target.screenId) info = cached
+  }
+  if (current !== target || !info?.key || !info?.channel) return
+
+  try {
+    const client = new Ably.Realtime({ key: info.key, echoMessages: false })
+    realtimeClient = client
+    let connectedBefore = false
+    client.connection.on('connected', () => {
+      // A (re)connection may follow missed messages, so sync once. The very first
+      // connection only needs one if the launch sync failed (e.g. started offline).
+      if (connectedBefore || !lastSyncOk) scheduleLiveSync()
+      connectedBefore = true
+    })
+    client.channels.get(info.channel).subscribe('changed', scheduleLiveSync).catch((error) => console.error('Realtime subscribe failed', error.message))
+  } catch (error) {
+    console.error('Realtime unavailable', error)
+  }
 }
 
 async function openScreen({ serverUrl, screenId }) {
@@ -182,7 +272,8 @@ async function openScreen({ serverUrl, screenId }) {
   current = { serverUrl, screenId }
   saveConfig({ serverUrl, screenId })
   hideOverlay()
-  loadScreen()
+  lastShownKey = null
+  loadScreen().then(startRealtime)
   return { ok: true }
 }
 
@@ -196,7 +287,7 @@ function openSavedScreen() {
 
   current = { serverUrl: server, screenId: id }
   hideOverlay()
-  loadScreen()
+  loadScreen().then(startRealtime)
   return true
 }
 
@@ -366,5 +457,6 @@ if (!app.requestSingleInstanceLock()) {
     ensureInstalled()
   })
 
+  app.on('before-quit', stopRealtime)
   app.on('window-all-closed', () => app.quit())
 }

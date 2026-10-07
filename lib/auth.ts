@@ -1,7 +1,7 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'crypto'
 import { promisify } from 'util'
 import { cookies } from 'next/headers'
-import type { NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 const scryptAsync = promisify(scrypt) as (password: string, salt: Buffer, keylen: number) => Promise<Buffer>
@@ -143,3 +143,9 @@ export function isValidEmail(email: string) {
 }
 
 export const MIN_PASSWORD_LENGTH = 6
+
+// For write routes: returns a 401 response when nobody is signed in, otherwise null.
+export async function requireUser() {
+  const user = await getCurrentUser()
+  return user ? null : NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+}
