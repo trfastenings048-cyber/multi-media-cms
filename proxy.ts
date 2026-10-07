@@ -9,10 +9,12 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hasSession = request.cookies.has(SESSION_COOKIE)
 
-  // Allow static files, api routes, and Next.js internal assets
+  // Allow static files, api routes, Next.js internal assets, and the public
+  // screen viewer (/view/screen/*) used by the desktop player. Only admin pages need a session.
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
+    pathname.startsWith('/view') ||
     pathname.includes('.') ||
     pathname === '/favicon.ico'
   ) {
