@@ -232,28 +232,51 @@ function attachShortcuts(webContents) {
   })
 }
 
-// ── Desktop shortcut ──────────────────────────────────────────────────────────
-// The portable exe has no installer, so on first run it adds an XOS shortcut to the
-// Desktop (pointing at wherever the exe actually lives). If the exe is moved, the
-// existing shortcut is repointed. A deleted shortcut is not recreated.
+// ── Install location + shortcuts ──────────────────────────────────────────────
+// A portable exe runs from a temporary folder that is deleted on exit, so anything pinned
+// to the taskbar while it is running would break. On launch the exe therefore keeps a
+// permanent copy of itself in %LOCALAPPDATA%\XOS and points the Desktop and Start menu
+// shortcuts at that copy. Pin the Desktop/Start menu "XOS" shortcut to the taskbar (or
+// pin the running app: Windows resolves it to the shortcut/permanent copy).
 
-function ensureDesktopShortcut() {
+function ensureInstalled() {
   if (process.platform !== 'win32' || !app.isPackaged) return
   try {
-    const target = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath
-    const link = path.join(app.getPath('desktop'), 'XOS.lnk')
-    const marker = path.join(app.getPath('userData'), 'shortcut-created')
-    const options = { target, cwd: path.dirname(target), icon: target, iconIndex: 0, description: 'XOS' }
+    const source = process.env.PORTABLE_EXECUTABLE_FILE
+    if (!source || !fs.existsSync(source)) return
 
-    if (fs.existsSync(link)) {
-      if (shell.readShortcutLink(link).target !== target) shell.writeShortcutLink(link, 'update', options)
-    } else if (!fs.existsSync(marker)) {
-      shell.writeShortcutLink(link, 'create', options)
+    const installDir = path.join(process.env.LOCALAPPDATA || app.getPath('appData'), 'XOS')
+    const target = path.join(installDir, 'XOS.exe')
+    const sourceStat = fs.statSync(source)
+    const targetStat = fs.existsSync(target) ? fs.statSync(target) : null
+    if (path.resolve(source).toLowerCase() !== path.resolve(target).toLowerCase() &&
+        (!targetStat || targetStat.size !== sourceStat.size || targetStat.mtimeMs < sourceStat.mtimeMs)) {
+      fs.mkdirSync(installDir, { recursive: true })
+      fs.copyFileSync(source, `${target}.tmp`)
+      fs.renameSync(`${target}.tmp`, target)
+    }
+
+    const options = { target, cwd: installDir, icon: target, iconIndex: 0, description: 'XOS', appUserModelId: 'com.trfastenings.screenplayer' }
+    const links = [
+      path.join(app.getPath('desktop'), 'XOS.lnk'),
+      path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'XOS.lnk'),
+    ]
+    const marker = path.join(app.getPath('userData'), 'shortcuts-created')
+    const firstRun = !fs.existsSync(marker)
+    for (const link of links) {
+      if (fs.existsSync(link)) {
+        // Repoint existing shortcuts (e.g. ones made by an older build).
+        if (shell.readShortcutLink(link).target !== target) shell.writeShortcutLink(link, 'update', options)
+      } else if (firstRun) {
+        shell.writeShortcutLink(link, 'create', options)
+      }
+    }
+    if (firstRun) {
       fs.mkdirSync(path.dirname(marker), { recursive: true })
       fs.writeFileSync(marker, '1')
     }
   } catch (error) {
-    console.error('Failed to create desktop shortcut', error)
+    console.error('Failed to install shortcuts', error)
   }
 }
 
@@ -336,9 +359,11 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     // No application menu, so its default Reload (Ctrl+R) accelerator does not exist.
+    // Same id as the shortcuts, so a pinned shortcut and the running window share one taskbar icon.
+    app.setAppUserModelId('com.trfastenings.screenplayer')
     Menu.setApplicationMenu(null)
     createWindow()
-    ensureDesktopShortcut()
+    ensureInstalled()
   })
 
   app.on('window-all-closed', () => app.quit())
