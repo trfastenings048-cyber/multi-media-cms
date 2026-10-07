@@ -1,6 +1,6 @@
 {
   "name": "tr-fastenings-screen-player",
-  "productName": "TR Fastenings Screen Player",
+  "productName": "XOS",
   "version": "1.0.0",
   "description": "Full-screen kiosk player that shows the content assigned to a TR Fastenings Multimedia screen.",
   "main": "main.js",
@@ -16,7 +16,7 @@
   },
   "build": {
     "appId": "com.trfastenings.screenplayer",
-    "productName": "TR Fastenings Screen Player",
+    "productName": "XOS",
     "directories": {
       "output": "dist"
     },
@@ -25,11 +25,13 @@
       "preload.js",
       "overlay.html",
       "build-config.json",
+      "icon.png",
       "package.json"
     ],
     "win": {
+      "icon": "icon.ico",
       "target": "portable",
-      "artifactName": "TRFasteningsScreenPlayer-${version}.exe"
+      "artifactName": "XOS-${version}.exe"
     }
   }
 }

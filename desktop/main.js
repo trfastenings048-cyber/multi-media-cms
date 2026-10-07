@@ -168,7 +168,8 @@ function layoutViews() {
 
 function createWindow() {
   win = new BaseWindow({
-    title: 'TR Fastenings Screen Player',
+    title: 'XOS',
+    icon: path.join(__dirname, 'icon.png'),
     backgroundColor: '#000000',
     fullscreen: true,
     kiosk: true,
