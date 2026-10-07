@@ -24,6 +24,7 @@
       "main.js",
       "preload.js",
       "overlay.html",
+      "player.html",
       "build-config.json",
       "icon.png",
       "package.json"

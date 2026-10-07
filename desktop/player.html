@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>XOS</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: #fff; font-family: system-ui, sans-serif; }
+    img, video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+    iframe { width: 100%; height: 100%; border: 0; background: #fff; display: block; }
+    .center { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 32px; text-align: center; background: #09090b; }
+    .logo { position: absolute; top: 0; left: 0; width: 220px; height: 220px; border-radius: 50%; overflow: hidden; background: #fff; box-shadow: 0 0 40px rgba(255,255,255,.18); will-change: transform; }
+    .logo img { width: 100%; height: 100%; object-fit: contain; padding: 14%; box-sizing: border-box; background: #fff; }
+    .center p { margin: 0; max-width: 640px; font-size: 20px; font-weight: 600; opacity: .85; }
+  </style>
+</head>
+<body>
+  <script>
+    const params = new URLSearchParams(location.search)
+    const kind = params.get('kind')
+    const src = params.get('src') || ''
+    const name = params.get('name') || ''
+    const root = document.body
+
+    function el(tag, props) {
+      return Object.assign(document.createElement(tag), props)
+    }
+
+    // Screensaver: the TR logo in a circle drifts in a random direction and bounces off the
+    // screen edges. Throttled to ~30fps and transform-only so it stays light on the CPU.
+    function screensaver() {
+      const logo = el('div', { className: 'logo' })
+      logo.append(el('img', { src: 'icon.png', alt: 'TR' }))
+      root.append(logo)
+
+      const size = 220
+      const speed = 140 // px per second
+      let x = Math.random() * Math.max(1, innerWidth - size)
+      let y = Math.random() * Math.max(1, innerHeight - size)
+      let angle = Math.random() * Math.PI * 2
+      let vx = Math.cos(angle) * speed
+      let vy = Math.sin(angle) * speed
+      let last = performance.now()
+
+      // Nudge the heading a little after each bounce so the path never settles into a loop.
+      function jitter() {
+        const a = Math.atan2(vy, vx) + (Math.random() - 0.5) * 0.5
+        vx = Math.cos(a) * speed
+        vy = Math.sin(a) * speed
+      }
+
+      function frame(now) {
+        requestAnimationFrame(frame)
+        const dt = now - last
+        if (dt < 33) return
+        last = now
+        const step = Math.min(dt, 100) / 1000
+        x += vx * step
+        y += vy * step
+        const maxX = innerWidth - size
+        const maxY = innerHeight - size
+        if (x <= 0) { x = 0; vx = Math.abs(vx); jitter(); vx = Math.abs(vx) }
+        else if (x >= maxX) { x = maxX; vx = -Math.abs(vx); jitter(); vx = -Math.abs(vx) }
+        if (y <= 0) { y = 0; vy = Math.abs(vy); jitter(); vy = Math.abs(vy) }
+        else if (y >= maxY) { y = maxY; vy = -Math.abs(vy); jitter(); vy = -Math.abs(vy) }
+        logo.style.transform = `translate(${x}px, ${y}px)`
+      }
+      requestAnimationFrame(frame)
+    }
+
+    if (kind === 'saver') {
+      screensaver()
+    } else if (kind === 'image') {
+      root.append(el('img', { src, alt: name }))
+    } else if (kind === 'video') {
+      root.append(el('video', { src, autoplay: true, muted: true, loop: true }))
+    } else if (kind === 'audio') {
+      const box = el('div', { className: 'center' })
+      box.append(el('p', { textContent: name }), el('audio', { src, autoplay: true, loop: true }))
+      root.append(box)
+    } else if (kind === 'pdf' || kind === 'website') {
+      root.append(el('iframe', { src, title: name }))
+    } else {
+      const box = el('div', { className: 'center' })
+      box.append(el('p', { textContent: params.get('text') || '' }))
+      root.append(box)
+    }
+  </script>
+</body>
+</html>

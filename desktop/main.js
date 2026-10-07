@@ -1,18 +1,19 @@
-const { app, BaseWindow, WebContentsView, Menu, ipcMain, net } = require('electron')
+const { app, BaseWindow, WebContentsView, Menu, ipcMain, net, shell } = require('electron')
 const fs = require('fs')
 const path = require('path')
+const { Readable } = require('stream')
+const { pipeline } = require('stream/promises')
+const { pathToFileURL } = require('url')
 
-// How often to check the CMS for a changed asset assignment on the current screen.
-const POLL_INTERVAL_MS = 30_000
-// How long to wait before retrying when the screen page fails to load.
-const RETRY_DELAY_MS = 10_000
+// No polling and no retry loops. On every launch the player fetches what is assigned to the
+// screen ONCE, saves it to local disk, and plays from the local copy. If the server cannot
+// be reached it plays the last saved copy. Changes in the CMS show up on the next launch.
+const REQUEST_TIMEOUT_MS = 20_000
 
 let win = null
 let contentView = null
 let overlayView = null
-let current = null // { serverUrl, screenId, signature }
-let pollTimer = null
-let retryTimer = null
+let current = null // { serverUrl, screenId }
 
 // ── Config ────────────────────────────────────────────────────────────────────
 // build-config.json is written by CI (CMS_URL repo variable) and gives the default
@@ -52,10 +53,13 @@ function normalizeServerUrl(value) {
   return url
 }
 
-// ── Screen loading ────────────────────────────────────────────────────────────
+// ── Content: fetch once, save locally, play from disk ─────────────────────────
+
+const cacheDir = () => path.join(app.getPath('userData'), 'content')
+const manifestPath = () => path.join(cacheDir(), 'manifest.json')
 
 async function fetchJson(url) {
-  const response = await net.fetch(url, { cache: 'no-store' })
+  const response = await net.fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
   if (!response.ok) {
     const error = new Error(`HTTP ${response.status}`)
     error.status = response.status
@@ -64,32 +68,97 @@ async function fetchJson(url) {
   return response.json()
 }
 
-// A fingerprint of what is assigned to the screen, so polling can tell when it changes.
-async function fetchSignature(serverUrl, screenId) {
+function extensionFor(asset) {
+  const fromName = path.extname(asset.name || '')
+  if (fromName) return fromName.toLowerCase()
+  const sub = String(asset.mimeType || '').split('/')[1] || 'bin'
+  return `.${sub.split(/[;+]/)[0]}`
+}
+
+async function downloadTo(url, file) {
+  const response = await net.fetch(url, { signal: AbortSignal.timeout(10 * 60_000) })
+  if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`)
+  const partial = `${file}.part`
+  await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(partial))
+  fs.renameSync(partial, file)
+}
+
+// Fetch the screen's assignment and save the file locally. Returns the manifest entry
+// ({ name, mimeType, kind, file | url }) or null when nothing is assigned.
+async function syncContent({ serverUrl, screenId }) {
   const assets = await fetchJson(`${serverUrl}/api/screens/${encodeURIComponent(screenId)}/assets`)
-  return JSON.stringify(assets.map((a) => [a.id, a.documentId, a.updatedAt, a.document?.updatedAt]))
-}
+  const doc = assets[0]?.document
+  fs.mkdirSync(cacheDir(), { recursive: true })
 
-function loadScreenPage() {
-  clearTimeout(retryTimer)
-  const { serverUrl, screenId } = current
-  contentView.webContents.loadURL(`${serverUrl}/view/screen/${encodeURIComponent(screenId)}?kiosk=1`)
-}
+  if (!doc) {
+    const manifest = { screenId, asset: null }
+    fs.writeFileSync(manifestPath(), JSON.stringify(manifest))
+    return manifest.asset
+  }
 
-function startPolling() {
-  clearInterval(pollTimer)
-  pollTimer = setInterval(async () => {
-    if (!current) return
-    try {
-      const signature = await fetchSignature(current.serverUrl, current.screenId)
-      if (signature !== current.signature) {
-        current.signature = signature
-        loadScreenPage()
-      }
-    } catch {
-      // Server temporarily unreachable: keep showing what is already on screen.
+  const base = { name: doc.name, mimeType: doc.mimeType }
+  let asset
+  if (doc.websiteUrl) {
+    // A live website cannot be stored locally; it is opened from its address.
+    asset = { ...base, url: doc.websiteUrl }
+  } else if (doc.cloudinaryUrl) {
+    const file = path.join(cacheDir(), `${doc.id}-${new Date(doc.updatedAt).getTime()}${extensionFor(doc)}`)
+    if (!fs.existsSync(file)) await downloadTo(doc.cloudinaryUrl, file)
+    asset = { ...base, file }
+  } else {
+    asset = null
+  }
+
+  fs.writeFileSync(manifestPath(), JSON.stringify({ screenId, asset }))
+  // Remove files that are no longer assigned to this screen.
+  for (const name of fs.readdirSync(cacheDir())) {
+    if (name !== 'manifest.json' && path.join(cacheDir(), name) !== asset?.file) {
+      fs.rmSync(path.join(cacheDir(), name), { force: true })
     }
-  }, POLL_INTERVAL_MS)
+  }
+  return asset
+}
+
+function readSavedContent(screenId) {
+  const manifest = readJson(manifestPath())
+  if (manifest.screenId !== screenId || !('asset' in manifest)) return undefined
+  if (manifest.asset?.file && !fs.existsSync(manifest.asset.file)) return undefined
+  return manifest.asset
+}
+
+function show(params) {
+  const query = new URLSearchParams(params).toString()
+  contentView.webContents.loadFile(path.join(__dirname, 'player.html'), { search: query })
+}
+
+function showAsset(asset) {
+  if (!asset) return show({ kind: 'saver' })
+  const mime = asset.mimeType || ''
+  const kind = asset.url
+    ? 'website'
+    : mime.startsWith('image/') ? 'image'
+    : mime.startsWith('video/') ? 'video'
+    : mime.startsWith('audio/') ? 'audio'
+    : mime === 'application/pdf' ? 'pdf'
+    : 'message'
+  if (kind === 'message') return show({ kind, text: asset.name || 'Unsupported file type.' })
+  show({ kind, name: asset.name || '', src: asset.url || pathToFileURL(asset.file).href })
+}
+
+// Sync once, then play from local. Used on every launch and after the Screen ID is entered.
+async function loadScreen() {
+  const { serverUrl, screenId } = current
+  let asset
+  try {
+    asset = await syncContent(current)
+  } catch (error) {
+    console.error('Sync failed, using saved copy', error)
+    asset = readSavedContent(screenId)
+    if (asset === undefined) {
+      return show({ kind: 'message', text: 'Could not reach the server and nothing is saved yet. Press Ctrl+R to try again.' })
+    }
+  }
+  showAsset(asset)
 }
 
 async function openScreen({ serverUrl, screenId }) {
@@ -110,19 +179,25 @@ async function openScreen({ serverUrl, screenId }) {
     }
   }
 
-  let signature = null
-  try {
-    signature = await fetchSignature(serverUrl, screenId)
-  } catch {
-    // Not fatal: the next poll will pick it up.
-  }
-
-  current = { serverUrl, screenId, signature }
+  current = { serverUrl, screenId }
   saveConfig({ serverUrl, screenId })
-  loadScreenPage()
-  startPolling()
   hideOverlay()
+  loadScreen()
   return { ok: true }
+}
+
+// On launch, reopen the saved server + screen without asking. The Screen ID modal only
+// appears when nothing is saved yet (or on Ctrl+R / F5).
+function openSavedScreen() {
+  const { serverUrl, screenId } = loadConfig()
+  const server = normalizeServerUrl(serverUrl)
+  const id = String(screenId || '').trim()
+  if (!server || !id) return false
+
+  current = { serverUrl: server, screenId: id }
+  hideOverlay()
+  loadScreen()
+  return true
 }
 
 // ── Overlay (Screen ID modal) ─────────────────────────────────────────────────
@@ -155,6 +230,31 @@ function attachShortcuts(webContents) {
       showOverlay()
     }
   })
+}
+
+// ── Desktop shortcut ──────────────────────────────────────────────────────────
+// The portable exe has no installer, so on first run it adds an XOS shortcut to the
+// Desktop (pointing at wherever the exe actually lives). If the exe is moved, the
+// existing shortcut is repointed. A deleted shortcut is not recreated.
+
+function ensureDesktopShortcut() {
+  if (process.platform !== 'win32' || !app.isPackaged) return
+  try {
+    const target = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath
+    const link = path.join(app.getPath('desktop'), 'XOS.lnk')
+    const marker = path.join(app.getPath('userData'), 'shortcut-created')
+    const options = { target, cwd: path.dirname(target), icon: target, iconIndex: 0, description: 'XOS' }
+
+    if (fs.existsSync(link)) {
+      if (shell.readShortcutLink(link).target !== target) shell.writeShortcutLink(link, 'update', options)
+    } else if (!fs.existsSync(marker)) {
+      shell.writeShortcutLink(link, 'create', options)
+      fs.mkdirSync(path.dirname(marker), { recursive: true })
+      fs.writeFileSync(marker, '1')
+    }
+  } catch (error) {
+    console.error('Failed to create desktop shortcut', error)
+  }
 }
 
 // ── Window ────────────────────────────────────────────────────────────────────
@@ -207,23 +307,14 @@ function createWindow() {
     wc.setWindowOpenHandler(() => ({ action: 'deny' }))
   }
 
-  contentView.webContents.on('did-fail-load', (_event, errorCode, _description, _url, isMainFrame) => {
-    // -3 is ERR_ABORTED (e.g. a new load replaced this one), not a real failure.
-    if (!isMainFrame || errorCode === -3 || !current) return
-    clearTimeout(retryTimer)
-    retryTimer = setTimeout(loadScreenPage, RETRY_DELAY_MS)
-  })
-  contentView.webContents.on('render-process-gone', () => {
-    if (current) loadScreenPage()
-  })
-
   contentView.webContents.loadURL('about:blank')
   overlayView.webContents.loadFile(path.join(__dirname, 'overlay.html'))
-  overlayView.webContents.once('did-finish-load', showOverlay)
+  overlayView.setVisible(false)
+  overlayView.webContents.once('did-finish-load', () => {
+    if (!openSavedScreen()) showOverlay()
+  })
 
   win.on('closed', () => {
-    clearInterval(pollTimer)
-    clearTimeout(retryTimer)
     win = contentView = overlayView = null
   })
 }
@@ -247,6 +338,7 @@ if (!app.requestSingleInstanceLock()) {
     // No application menu, so its default Reload (Ctrl+R) accelerator does not exist.
     Menu.setApplicationMenu(null)
     createWindow()
+    ensureDesktopShortcut()
   })
 
   app.on('window-all-closed', () => app.quit())
