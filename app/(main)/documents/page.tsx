@@ -445,7 +445,7 @@ export default function DocumentsDashboard() {
 
   // Background: white at the top, light sea blue in the middle, dark blue at the bottom.
   return (
-    <div className="bg-[linear-gradient(to_top,#0a1f5c_0%,#1d4ed8_22%,#5cc8e0_52%,#d6f4fa_78%,#ffffff_100%)] dark:bg-[linear-gradient(to_top,#020617_0%,#0f172a_50%,#1e293b_100%)] min-h-screen py-10 px-8 flex flex-col gap-8 antialiased">
+    <div className="bg-[linear-gradient(to_top,#0a1f5c_0%,#1d4ed8_22%,#5cc8e0_52%,#d6f4fa_78%,#ffffff_100%)] dark:bg-[linear-gradient(to_top,#020617_0%,#0f172a_50%,#1e293b_100%)] min-h-dvh px-3 py-5 sm:px-5 sm:py-8 lg:px-8 lg:py-10 3xl:px-12 flex flex-col gap-5 sm:gap-8 antialiased">
       {/* 1. Page Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-sky-100 dark:border-zinc-800 pb-6 shrink-0">
         <div>
@@ -453,16 +453,16 @@ export default function DocumentsDashboard() {
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Manage and review stored files and website assets securely.</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Search bar */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3 top-2.5" />
+          <div className="relative w-full sm:w-auto">
+            <Search className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute left-3 top-3.5 sm:top-2.5" />
             <input
               type="text"
               placeholder="Search filename, tags..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2 text-xs text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white w-60 transition-all shadow-sm"
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 sm:py-2 text-base sm:text-xs text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white w-full sm:w-60 transition-all shadow-sm"
             />
           </div>
 
@@ -470,7 +470,7 @@ export default function DocumentsDashboard() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white cursor-pointer shadow-sm"
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 min-w-[calc(50%-0.25rem)] flex-1 sm:min-w-0 sm:flex-none rounded-xl px-3 py-2.5 sm:py-2 text-sm sm:text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white cursor-pointer shadow-sm"
           >
             <option value="ALL">All Statuses</option>
             <option value="COMPLETED">Completed</option>
@@ -483,7 +483,7 @@ export default function DocumentsDashboard() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white cursor-pointer shadow-sm"
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 min-w-[calc(50%-0.25rem)] flex-1 sm:min-w-0 sm:flex-none rounded-xl px-3 py-2.5 sm:py-2 text-sm sm:text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white cursor-pointer shadow-sm"
           >
             <option value="ALL">All Formats</option>
             <option value="PDF">PDF</option>
@@ -498,7 +498,7 @@ export default function DocumentsDashboard() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white cursor-pointer shadow-sm"
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 min-w-[calc(50%-0.25rem)] flex-1 sm:min-w-0 sm:flex-none rounded-xl px-3 py-2.5 sm:py-2 text-sm sm:text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white cursor-pointer shadow-sm"
           >
             <option value="NEWEST">Newest Uploaded</option>
             <option value="OLDEST">Oldest Uploaded</option>
@@ -509,14 +509,14 @@ export default function DocumentsDashboard() {
           {/* Upload trigger button using Dialog */}
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-black hover:bg-zinc-900 text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-md cursor-pointer flex items-center gap-1.5">
+              <Button className="bg-black hover:bg-zinc-900 text-white font-semibold text-xs h-10 sm:h-auto py-2 px-4 rounded-xl shadow-md cursor-pointer flex w-full sm:w-auto items-center justify-center gap-1.5">
                 <Upload className="w-3.5 h-3.5" /> Add to Storage
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl sm:max-w-4xl rounded-2xl bg-white p-0 overflow-hidden shadow-2xl">
+            <DialogContent className="max-w-[calc(100%-1rem)] sm:max-w-4xl rounded-2xl bg-white p-0 overflow-y-auto shadow-2xl">
               <div className="grid grid-cols-1 md:grid-cols-12">
                 {/* Left panel: Specifications and Instructions (Col Span 5) */}
-                <div className="md:col-span-5 bg-zinc-50 p-6 border-r border-zinc-100 flex flex-col justify-between">
+                <div className="md:col-span-5 bg-zinc-50 p-4 sm:p-6 border-r border-zinc-100 flex flex-col justify-between">
                   <div className="space-y-5">
                     <div>
                       <DialogTitle className="text-lg font-bold text-zinc-900">Storage</DialogTitle>
@@ -582,7 +582,7 @@ export default function DocumentsDashboard() {
                 </div>
 
                 {/* Right panel: Storage workspace (Col Span 7) */}
-                <div className="md:col-span-7 p-6 flex flex-col justify-between min-h-[400px]">
+                <div className="md:col-span-7 p-4 sm:p-6 flex flex-col justify-between gap-6 md:min-h-[400px]">
                   <div className="space-y-4">
                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2">
                       Dropzone Workspace
@@ -596,13 +596,13 @@ export default function DocumentsDashboard() {
                         value={websiteUrl}
                         onChange={(e) => setWebsiteUrl(e.target.value)}
                         placeholder="https://example.com"
-                        className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs text-zinc-800 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-black"
+                        className="h-11 sm:h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base sm:text-xs text-zinc-800 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-black"
                       />
                       <input
                         value={websiteName}
                         onChange={(e) => setWebsiteName(e.target.value)}
                         placeholder="Optional display name"
-                        className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs text-zinc-800 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-black"
+                        className="h-11 sm:h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base sm:text-xs text-zinc-800 outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-black"
                       />
                     </div>
 
@@ -619,7 +619,7 @@ export default function DocumentsDashboard() {
                         handleAddFiles(e.dataTransfer.files)
                       }}
                       onClick={() => fileInputRef.current?.click()}
-                      className={`border-2 border-dashed rounded-xl py-12 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all duration-200 ${
+                      className={`border-2 border-dashed rounded-xl py-8 sm:py-12 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all duration-200 ${
                         dragOver
                           ? 'border-black bg-zinc-50/50 scale-[0.99] shadow-inner'
                           : 'border-zinc-200 hover:border-zinc-400 hover:bg-zinc-50/20'
@@ -720,7 +720,7 @@ export default function DocumentsDashboard() {
       </header>
 
       {/* 2. Top Statistics Section */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 shrink-0">
+      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5 shrink-0 max-md:[&>*:last-child]:col-span-2 md:max-lg:[&>*:last-child]:col-span-1">
         {/* Total Documents */}
         <div className="bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border border-white/70 dark:border-zinc-800 shadow-blue-950/10 dark:shadow-black/40 p-4 rounded-2xl flex flex-col gap-2.5 shadow-lg hover:shadow-xl transition-shadow relative overflow-hidden group">
           <div className="flex items-center justify-between text-zinc-400">
@@ -876,7 +876,8 @@ export default function DocumentsDashboard() {
         ) : (
           /* Table View */
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto overscroll-contain">
+              <div className="hidden md:block">
               <Table className="relative">
                 <TableHeader className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-100 dark:border-zinc-800 sticky top-0 z-10">
                   <TableRow>
@@ -889,11 +890,11 @@ export default function DocumentsDashboard() {
                       />
                     </TableHead>
                     <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4">File Name</TableHead>
-                    <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4">Type</TableHead>
+                    <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4 hidden lg:table-cell">Type</TableHead>
                     <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4">Size</TableHead>
                     <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4">Status</TableHead>
-                    <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4">Created Date</TableHead>
-                    <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4">Tags</TableHead>
+                    <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4 hidden lg:table-cell">Created Date</TableHead>
+                    <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4 hidden xl:table-cell">Tags</TableHead>
                     <TableHead className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest p-4 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -920,22 +921,22 @@ export default function DocumentsDashboard() {
                             <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${iconBg(doc.mimeType)} shrink-0 shadow-sm overflow-hidden`}>
                               <AssetPreview doc={doc} />
                             </div>
-                            <span className="truncate max-w-[200px]" title={doc.name}>
+                            <span className="truncate max-w-[140px] lg:max-w-[200px] xl:max-w-xs 3xl:max-w-md" title={doc.name}>
                               {doc.name}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="p-4 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase">
+                        <TableCell className="p-4 hidden lg:table-cell text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase">
                           {doc.sourceType === 'WEBSITE' || doc.websiteUrl ? 'website' : doc.mimeType.split('/')[1] || doc.mimeType}
                         </TableCell>
                         <TableCell className="p-4 text-xs font-medium text-zinc-600 dark:text-zinc-300">
                           {doc.sourceType === 'WEBSITE' || doc.websiteUrl ? 'External' : formatBytes(doc.size)}
                         </TableCell>
                         <TableCell className="p-4">{getStatusBadge(doc.status)}</TableCell>
-                        <TableCell className="p-4 text-xs text-zinc-500 dark:text-zinc-400">
+                        <TableCell className="p-4 hidden lg:table-cell text-xs text-zinc-500 dark:text-zinc-400">
                           {formatDate(doc.createdAt)}
                         </TableCell>
-                        <TableCell className="p-4">
+                        <TableCell className="p-4 hidden xl:table-cell">
                           <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-300 text-[10px] font-semibold">
                             media
                           </span>
@@ -973,16 +974,63 @@ export default function DocumentsDashboard() {
                   })}
                 </TableBody>
               </Table>
+              </div>
+
+              {/* Phone layout: one card per document instead of a wide table. */}
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/60 md:hidden">
+                {paginatedDocs.map((doc) => {
+                  const isSelected = selectedIds.includes(doc.id)
+                  const isWebsite = doc.sourceType === 'WEBSITE' || Boolean(doc.websiteUrl)
+                  return (
+                    <li key={doc.id} className={`flex items-start gap-3 p-3 ${isSelected ? 'bg-zinc-50/80 dark:bg-zinc-800/50' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectRow(doc.id)}
+                        aria-label={`Select ${doc.name}`}
+                        className="mt-3 size-4 shrink-0 accent-black cursor-pointer"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDetailDoc(doc)}
+                        className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                      >
+                        <div className={`size-11 shrink-0 overflow-hidden rounded-lg flex items-center justify-center shadow-sm ${iconBg(doc.mimeType)}`}>
+                          <AssetPreview doc={doc} />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <p className="line-clamp-2 break-words text-sm font-semibold leading-snug text-zinc-800 dark:text-zinc-100">{doc.name}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            {getStatusBadge(doc.status)}
+                            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                              {isWebsite ? 'Website' : formatBytes(doc.size)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 dark:text-zinc-500">{formatDate(doc.createdAt)}</p>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmId(doc.id)}
+                        className="flex size-10 shrink-0 items-center justify-center rounded-lg text-zinc-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950"
+                        aria-label={`Delete ${doc.name}`}
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
             </div>
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="bg-zinc-50/50 dark:bg-zinc-950/50 border-t border-zinc-100 dark:border-zinc-800 px-6 py-4 flex items-center justify-between shrink-0">
+              <div className="bg-zinc-50/50 dark:bg-zinc-950/50 border-t border-zinc-100 dark:border-zinc-800 px-4 py-3 sm:px-6 sm:py-4 flex flex-col gap-3 sm:flex-row items-center justify-between shrink-0">
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
                   Showing {Math.min(filteredDocs.length, (currentPage - 1) * itemsPerPage + 1)}–
                   {Math.min(filteredDocs.length, currentPage * itemsPerPage)} of {filteredDocs.length} files
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -992,13 +1040,14 @@ export default function DocumentsDashboard() {
                   >
                     Previous
                   </Button>
+                  <span className="text-xs font-medium text-zinc-500 sm:hidden">{currentPage} / {totalPages}</span>
                   {Array.from({ length: totalPages }).map((_, idx) => {
                     const p = idx + 1
                     return (
                       <button
                         key={p}
                         onClick={() => setCurrentPage(p)}
-                        className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all ${
+                        className={`hidden sm:block w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
                           currentPage === p
                             ? 'bg-black dark:bg-white text-white dark:text-black'
                             : 'hover:bg-zinc-150 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
@@ -1047,14 +1096,14 @@ export default function DocumentsDashboard() {
 
       {/* 6. Document Preview and Details Modal */}
       <Dialog open={selectedDetailDoc !== null} onOpenChange={(open) => !open && setSelectedDetailDoc(null)}>
-        <DialogContent className="max-h-[90vh] max-w-5xl overflow-hidden rounded-2xl bg-white dark:bg-zinc-950 p-0 shadow-2xl sm:max-w-5xl">
+        <DialogContent className="max-w-[calc(100%-1rem)] overflow-y-auto md:overflow-hidden rounded-2xl bg-white dark:bg-zinc-950 p-0 shadow-2xl sm:max-w-5xl">
           {selectedDetailDoc && (
-            <div className="grid max-h-[90vh] grid-cols-1 overflow-hidden md:grid-cols-[1fr_360px]">
-              <div className="min-h-[360px] bg-zinc-950 dark:bg-black">
+            <div className="grid grid-cols-1 md:max-h-[90vh] md:overflow-hidden md:grid-cols-[1fr_360px]">
+              <div className="min-h-[240px] sm:min-h-[360px] bg-zinc-950 dark:bg-black">
                 <AssetPreview doc={selectedDetailDoc} large />
               </div>
 
-              <div className="flex max-h-[90vh] flex-col overflow-y-auto p-6">
+              <div className="flex flex-col p-4 sm:p-6 md:max-h-[90vh] md:overflow-y-auto">
                 <DialogHeader className="pr-8">
                   <div className={`mb-2 flex h-12 w-12 items-center justify-center rounded-xl ${iconBg(selectedDetailDoc.mimeType)} shadow-sm`}>
                     <FileIcon mimeType={selectedDetailDoc.mimeType} className="h-6 w-6" />

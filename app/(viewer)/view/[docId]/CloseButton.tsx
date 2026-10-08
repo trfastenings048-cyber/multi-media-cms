@@ -4,7 +4,7 @@ export default function CloseButton() {
   return (
     <button
       onClick={() => window.close()}
-      className="text-white/40 hover:text-white transition-colors"
+      className="flex size-10 shrink-0 items-center justify-center text-white/40 hover:text-white transition-colors"
       aria-label="Close"
     >
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

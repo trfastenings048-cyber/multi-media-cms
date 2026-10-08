@@ -80,7 +80,7 @@ export default function ScreenPlayer({ screenName, assets, kiosk = false }: Scre
 
   if (!firstAsset) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-zinc-950 text-white select-none">
+      <div className="h-dvh flex flex-col items-center justify-center bg-zinc-950 text-white select-none">
         <div className="max-w-md text-center p-8 bg-zinc-900 rounded-2xl border border-zinc-800 shadow-2xl flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center border border-zinc-700">
             <Monitor className="size-8 text-zinc-500" />
@@ -96,7 +96,7 @@ export default function ScreenPlayer({ screenName, assets, kiosk = false }: Scre
   }
 
   return (
-    <div className="relative h-screen bg-black text-white">
+    <div className="relative h-dvh bg-black text-white">
       {!kiosk && (
         <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
           <button

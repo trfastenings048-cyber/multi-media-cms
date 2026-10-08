@@ -203,10 +203,10 @@ function VideoViewer({ src, name }: { src: string; name: string }) {
         </div>
 
         {/* Buttons strip */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             {/* Play/Pause */}
-            <button onClick={togglePlay} className="p-1.5 hover:bg-zinc-800 text-white rounded-lg transition-colors cursor-pointer">
+            <button onClick={togglePlay} className="p-2.5 sm:p-1.5 hover:bg-zinc-800 text-white rounded-lg transition-colors cursor-pointer">
               {isPlaying ? (
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
               ) : (
@@ -244,12 +244,12 @@ function VideoViewer({ src, name }: { src: string; name: string }) {
                 step={0.05}
                 value={volume}
                 onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="w-16 accent-white bg-zinc-700 h-1 rounded cursor-pointer"
+                className="hidden sm:block w-16 accent-white bg-zinc-700 h-1 rounded cursor-pointer"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {/* Speed Selector */}
             <select
               value={playbackSpeed}
@@ -267,7 +267,7 @@ function VideoViewer({ src, name }: { src: string; name: string }) {
             <select
               value={resolution}
               onChange={(e) => setResolution(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 text-white text-xs rounded px-2 py-1 focus:outline-none"
+              className="hidden sm:block bg-zinc-900 border border-zinc-800 text-white text-xs rounded px-2 py-1 focus:outline-none"
             >
               <option value="1080p">1080p</option>
               <option value="720p">720p</option>
@@ -276,7 +276,7 @@ function VideoViewer({ src, name }: { src: string; name: string }) {
             </select>
 
             {/* Fullscreen */}
-            <button onClick={toggleFullscreen} className="p-1.5 hover:bg-zinc-800 text-white rounded-lg transition-colors cursor-pointer">
+            <button onClick={toggleFullscreen} className="p-2.5 sm:p-1.5 hover:bg-zinc-800 text-white rounded-lg transition-colors cursor-pointer">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 20v-4m0 4h4m-4 0l5-5m11 5h-4m4 0v-4m0 4l-5-5" />
               </svg>
@@ -321,13 +321,36 @@ function ImageViewer({ src, name, otherImages }: { src: string; name: string; ot
     setOffset({ x: 0, y: 0 })
   }
 
-  const startPan = (e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsPanning(true)
-    setPanStart({ x: e.clientX - offset.x, y: e.clientY - offset.y })
+  // Pointer events cover mouse, touch and pen: one pointer pans, two pointers pinch-zoom.
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<{ distance: number; scale: number } | null>(null)
+
+  const pointerDistance = () => {
+    const [a, b] = Array.from(pointers.current.values())
+    return Math.hypot(a.x - b.x, a.y - b.y)
   }
 
-  const doPan = (e: React.MouseEvent) => {
+  const startPan = (e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pointers.current.size === 2) {
+      pinch.current = { distance: pointerDistance() || 1, scale }
+      setIsPanning(false)
+    } else {
+      setIsPanning(true)
+      setPanStart({ x: e.clientX - offset.x, y: e.clientY - offset.y })
+    }
+  }
+
+  const doPan = (e: React.PointerEvent) => {
+    if (!pointers.current.has(e.pointerId)) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+    if (pointers.current.size === 2 && pinch.current) {
+      const next = pinch.current.scale * (pointerDistance() / pinch.current.distance)
+      setScale(Math.max(0.2, Math.min(8, next)))
+      return
+    }
     if (!isPanning) return
     setOffset({
       x: e.clientX - panStart.x,
@@ -335,11 +358,25 @@ function ImageViewer({ src, name, otherImages }: { src: string; name: string; ot
     })
   }
 
-  const stopPan = () => {
-    setIsPanning(false)
+  const stopPan = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId)
+    pinch.current = null
+    const remaining = Array.from(pointers.current.values())[0]
+    if (remaining) {
+      // Went from two fingers to one: keep panning from where that finger is.
+      setIsPanning(true)
+      setPanStart({ x: remaining.x - offset.x, y: remaining.y - offset.y })
+    } else {
+      setIsPanning(false)
+    }
   }
 
-  const handleBeforeAfterMouseMove = (e: React.MouseEvent) => {
+  const toggleDoubleTapZoom = () => {
+    setScale(prev => (prev > 1 ? 1 : 2.5))
+    setOffset({ x: 0, y: 0 })
+  }
+
+  const handleBeforeAfterMove = (e: React.PointerEvent) => {
     if (!beforeAfterContainerRef.current) return
     const rect = beforeAfterContainerRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
@@ -350,18 +387,18 @@ function ImageViewer({ src, name, otherImages }: { src: string; name: string; ot
   return (
     <div className="w-full h-full bg-zinc-950 flex flex-col relative select-none">
       {/* Top Toolbar */}
-      <div className="bg-zinc-900 px-4 py-2 border-b border-zinc-800 flex items-center justify-between z-10 text-xs text-white">
-        <div className="flex items-center gap-3">
-          <button onClick={() => handleZoom(1.2)} className="px-2 py-1 bg-zinc-850 hover:bg-zinc-700 rounded transition-colors cursor-pointer" title="Zoom In">Zoom +</button>
-          <button onClick={() => handleZoom(0.8)} className="px-2 py-1 bg-zinc-850 hover:bg-zinc-700 rounded transition-colors cursor-pointer" title="Zoom Out">Zoom -</button>
-          <button onClick={() => setRotation(r => (r + 90) % 360)} className="px-2 py-1 bg-zinc-850 hover:bg-zinc-700 rounded transition-colors cursor-pointer" title="Rotate">Rotate ↻</button>
-          <button onClick={handleReset} className="px-2 py-1 bg-zinc-850 hover:bg-zinc-700 rounded transition-colors cursor-pointer" title="Reset View">Reset</button>
+      <div className="bg-zinc-900 px-3 sm:px-4 py-2 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2 z-10 text-xs text-white">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button onClick={() => handleZoom(1.2)} className="px-3 py-2 sm:px-2 sm:py-1 bg-zinc-850 hover:bg-zinc-700 rounded transition-colors cursor-pointer" title="Zoom In">Zoom +</button>
+          <button onClick={() => handleZoom(0.8)} className="px-3 py-2 sm:px-2 sm:py-1 bg-zinc-850 hover:bg-zinc-700 rounded transition-colors cursor-pointer" title="Zoom Out">Zoom -</button>
+          <button onClick={() => setRotation(r => (r + 90) % 360)} className="px-3 py-2 sm:px-2 sm:py-1 bg-zinc-850 hover:bg-zinc-700 rounded transition-colors cursor-pointer" title="Rotate">Rotate ↻</button>
+          <button onClick={handleReset} className="px-3 py-2 sm:px-2 sm:py-1 bg-zinc-850 hover:bg-zinc-700 rounded transition-colors cursor-pointer" title="Reset View">Reset</button>
         </div>
 
         {/* Comparison Selector */}
         {otherImages.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-zinc-500">Compare Mode:</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="hidden sm:inline text-zinc-500">Compare Mode:</span>
             <select
               value={compareMode}
               onChange={(e) => {
@@ -394,14 +431,15 @@ function ImageViewer({ src, name, otherImages }: { src: string; name: string; ot
       </div>
 
       {/* Main Canvas view */}
-      <div className="flex-1 relative overflow-hidden flex items-center justify-center p-4">
+      <div className="flex-1 relative overflow-hidden flex items-center justify-center p-2 sm:p-4">
         {compareMode === 'single' && (
           <div
-            onMouseDown={startPan}
-            onMouseMove={doPan}
-            onMouseUp={stopPan}
-            onMouseLeave={stopPan}
-            className={`w-full h-full flex items-center justify-center cursor-grab ${isPanning ? 'cursor-grabbing' : ''}`}
+            onPointerDown={startPan}
+            onPointerMove={doPan}
+            onPointerUp={stopPan}
+            onPointerCancel={stopPan}
+            onDoubleClick={toggleDoubleTapZoom}
+            className={`w-full h-full flex items-center justify-center touch-none cursor-grab ${isPanning ? 'cursor-grabbing' : ''}`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -417,7 +455,7 @@ function ImageViewer({ src, name, otherImages }: { src: string; name: string; ot
         )}
 
         {compareMode === 'side-by-side' && (
-          <div className="w-full h-full grid grid-cols-2 gap-4">
+          <div className="w-full h-full grid grid-cols-1 grid-rows-2 landscape:grid-cols-2 landscape:grid-rows-1 sm:grid-cols-2 sm:grid-rows-1 gap-2 sm:gap-4">
             <div className="w-full h-full border border-zinc-850 rounded-lg overflow-hidden flex items-center justify-center bg-black/50 p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt="Original" className="max-w-full max-h-full object-contain" />
@@ -432,8 +470,12 @@ function ImageViewer({ src, name, otherImages }: { src: string; name: string; ot
         {compareMode === 'before-after' && (
           <div
             ref={beforeAfterContainerRef}
-            onMouseMove={handleBeforeAfterMouseMove}
-            className="relative w-full h-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden border border-zinc-800 self-center"
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId)
+              handleBeforeAfterMove(e)
+            }}
+            onPointerMove={handleBeforeAfterMove}
+            className="relative touch-none w-full h-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden border border-zinc-800 self-center"
           >
             {/* Background image (After / Right side) */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -482,23 +524,23 @@ function PdfViewer({ src, name }: { src: string; name: string }) {
   return (
     <div className="w-full h-full bg-zinc-950 flex flex-col text-white relative">
       {/* Header bar */}
-      <div className="bg-zinc-900 border-b border-zinc-800 px-4 py-2 flex items-center justify-between text-xs">
+      <div className="bg-zinc-900 border-b border-zinc-800 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowThumbnails(!showThumbnails)}
-            className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded"
+            className="hidden md:block p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded"
             title="Toggle Thumbnails"
           >
             📖 Sidebar
           </button>
-          <div className="flex items-center gap-1.5 border-l border-zinc-800 pl-3">
+          <div className="flex items-center gap-1.5 md:border-l border-zinc-800 md:pl-3">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} className="px-2 py-0.5 bg-zinc-800 rounded hover:bg-zinc-700">&lt;</button>
             <span>Page {page} of {totalPages}</span>
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="px-2 py-0.5 bg-zinc-800 rounded hover:bg-zinc-700">&gt;</button>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {/* Zoom controls */}
           <div className="flex items-center gap-1">
             <button onClick={() => setZoom(z => Math.max(50, z - 25))} className="px-2 py-0.5 bg-zinc-800 rounded hover:bg-zinc-700">-</button>
@@ -513,7 +555,7 @@ function PdfViewer({ src, name }: { src: string; name: string }) {
               placeholder="Search text..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-white placeholder-zinc-500 w-36 focus:outline-none focus:border-zinc-700"
+              className="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-white placeholder-zinc-500 w-28 sm:w-36 focus:outline-none focus:border-zinc-700"
             />
             {searchTerm && (
               <span className="absolute right-2 top-1.5 text-[9px] text-zinc-400 font-mono">
@@ -536,7 +578,7 @@ function PdfViewer({ src, name }: { src: string; name: string }) {
       <div className="flex-1 flex overflow-hidden">
         {/* Left Thumbnails strip */}
         {showThumbnails && (
-          <aside className="w-40 border-r border-zinc-900 bg-zinc-900/50 p-3 overflow-y-auto shrink-0 flex flex-col gap-3">
+          <aside className="w-40 border-r border-zinc-900 bg-zinc-900/50 p-3 overflow-y-auto shrink-0 hidden md:flex flex-col gap-3">
             {Array.from({ length: totalPages }).map((_, idx) => {
               const pNum = idx + 1
               const isActive = pNum === page
@@ -559,7 +601,7 @@ function PdfViewer({ src, name }: { src: string; name: string }) {
         )}
 
         {/* Real PDF frame / container */}
-        <div className="flex-1 overflow-auto bg-zinc-900 p-8 flex justify-center">
+        <div className="flex-1 overflow-auto bg-zinc-900 p-2 sm:p-8 flex justify-center">
           <div
             style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
             className="w-full max-w-3xl aspect-[1/1.414] bg-white text-zinc-800 rounded-xl shadow-2xl relative p-8 border border-zinc-200 transition-transform duration-150"

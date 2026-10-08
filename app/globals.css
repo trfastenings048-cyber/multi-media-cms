@@ -4,6 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Extra breakpoint for large desktop monitors (default 2xl is 1536px). */
+@theme {
+  --breakpoint-3xl: 120rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -48,9 +53,35 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background: #ffffff;
+  overflow-x: hidden;
 }
+
+/* Keeps content clear of notches / home indicators. */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+
+/* Centres page content and stops it stretching on very wide monitors. */
+.container-page {
+  width: 100%;
+  max-width: 1800px;
+  margin-inline: auto;
+}
+
+/* Touch dragging: stops the browser selecting text / showing the callout menu. */
+.touch-draggable {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.touch-dragging { touch-action: none; }
 
 :root {
   --background: oklch(1 0 0);

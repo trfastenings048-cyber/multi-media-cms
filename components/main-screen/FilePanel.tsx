@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { FileText, Globe2, Search } from 'lucide-react'
+import { FileText, Globe2, MonitorUp, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Document, FileIcon, formatBytes, formatDate, iconBg, StatusBadge } from './shared'
 import { DocumentListSkeleton } from './skeletons'
+import { ASSIGN_REQUEST_EVENT, startTouchDrag, useFinePointer } from './touch-drag'
 
 type DocumentItem = Document & {
   cloudinaryUrl?: string | null
@@ -18,6 +19,7 @@ export default function FilePanel() {
   const [documents, setDocuments] = useState<DocumentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const finePointer = useFinePointer()
 
   useEffect(() => {
     function loadDocuments() {
@@ -60,8 +62,8 @@ export default function FilePanel() {
   }, [documents, searchTerm])
 
   return (
-    <aside className="w-80 shrink-0 rounded-2xl bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border border-white/70 dark:border-zinc-800 shadow-lg shadow-blue-950/10 dark:shadow-black/40 flex flex-col overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-zinc-800 space-y-4">
+    <aside className="order-2 min-h-0 w-full flex-1 md:order-1 md:w-72 md:flex-none lg:w-80 3xl:w-96 rounded-2xl bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border border-white/70 dark:border-zinc-800 shadow-lg shadow-blue-950/10 dark:shadow-black/40 flex flex-col overflow-hidden">
+      <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-gray-100 dark:border-zinc-800 space-y-3 sm:space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-xs font-semibold text-gray-400 dark:text-zinc-400 tracking-widest uppercase">
@@ -82,12 +84,12 @@ export default function FilePanel() {
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Search documents"
-            className="h-10 w-full rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900 pl-9 pr-3 text-sm text-gray-900 dark:text-zinc-100 outline-none transition focus:border-gray-300 dark:focus:border-zinc-700 focus:bg-white dark:focus:bg-zinc-950"
+            className="h-11 md:h-10 w-full rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900 pl-9 pr-3 text-sm text-gray-900 dark:text-zinc-100 outline-none transition focus:border-gray-300 dark:focus:border-zinc-700 focus:bg-white dark:focus:bg-zinc-950"
           />
         </label>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4" data-autoscroll>
         {loading ? (
           <DocumentListSkeleton />
         ) : filteredDocuments.length === 0 ? (
@@ -115,7 +117,13 @@ export default function FilePanel() {
                   href={doc.s3Url || '#'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  draggable={Boolean(doc.s3Url)}
+                  draggable={finePointer && Boolean(doc.s3Url)}
+                  onPointerDown={(event) => {
+                    if (doc.s3Url) startTouchDrag(event, doc, doc.name)
+                  }}
+                  onContextMenu={(event) => {
+                    if (!finePointer) event.preventDefault()
+                  }}
                   onClick={(event) => {
                     if (!doc.s3Url) event.preventDefault()
                   }}
@@ -123,7 +131,7 @@ export default function FilePanel() {
                     event.dataTransfer.setData('application/json', JSON.stringify(doc))
                     event.dataTransfer.effectAllowed = 'copy'
                   }}
-                  className="group block rounded-xl border border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 transition hover:border-gray-200 dark:hover:border-zinc-700 hover:shadow-sm active:cursor-grabbing"
+                  className="touch-draggable group relative block rounded-xl border border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 transition hover:border-gray-200 dark:hover:border-zinc-700 hover:shadow-sm active:cursor-grabbing"
                 >
                   <div className="flex gap-3">
                     <div className={`h-12 w-12 shrink-0 rounded-xl flex items-center justify-center ${isWebsite ? 'bg-sky-50 dark:bg-sky-950/50' : iconBg(doc.mimeType)} overflow-hidden`}>
@@ -138,7 +146,7 @@ export default function FilePanel() {
                       )}
                     </div>
 
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 pr-8">
                       <p className="line-clamp-2 break-words text-sm font-semibold leading-snug text-gray-900 dark:text-zinc-100 group-hover:text-black dark:group-hover:text-white">
                         {doc.name}
                       </p>
@@ -155,6 +163,22 @@ export default function FilePanel() {
                       ) : null}
                     </div>
                   </div>
+                  {doc.s3Url ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        window.dispatchEvent(new CustomEvent(ASSIGN_REQUEST_EVENT, { detail: { document: doc } }))
+                      }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      className="absolute right-2 top-2 flex size-9 items-center justify-center rounded-lg bg-gray-100 text-gray-600 transition hover:bg-gray-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 md:size-8 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                      aria-label={`Assign ${doc.name} to a screen`}
+                      title="Assign to screen"
+                    >
+                      <MonitorUp className="size-4" />
+                    </button>
+                  ) : null}
                 </a>
               )
             })}

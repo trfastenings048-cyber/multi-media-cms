@@ -114,7 +114,7 @@ export default function DashboardPage() {
 
   // Background: white at the top, light sea blue in the middle, dark blue at the bottom.
   return (
-    <div className="min-h-screen bg-[linear-gradient(to_top,#0a1f5c_0%,#1d4ed8_22%,#5cc8e0_52%,#d6f4fa_78%,#ffffff_100%)] dark:bg-[linear-gradient(to_top,#020617_0%,#0f172a_50%,#1e293b_100%)] px-6 py-8 lg:px-8 flex flex-col gap-8">
+    <div className="min-h-dvh bg-[linear-gradient(to_top,#0a1f5c_0%,#1d4ed8_22%,#5cc8e0_52%,#d6f4fa_78%,#ffffff_100%)] dark:bg-[linear-gradient(to_top,#020617_0%,#0f172a_50%,#1e293b_100%)] px-3 py-5 sm:px-6 sm:py-8 lg:px-8 3xl:px-12 flex flex-col gap-5 sm:gap-8">
       <header className="flex flex-col gap-2 border-b border-sky-100 dark:border-zinc-800/50 pb-6">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">Dashboard</h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">Overview of sessions, uploaded documents, and registered screens.</p>
@@ -122,17 +122,17 @@ export default function DashboardPage() {
 
       {loading ? (
         <div className="flex flex-col gap-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-5 max-md:[&>*:last-child]:col-span-2 md:max-xl:[&>*:last-child]:col-span-1">
             {Array.from({ length: 5 }).map((_, idx) => (
               <Skeleton key={idx} className="h-32 rounded-2xl bg-white/50 backdrop-blur-md" />
             ))}
           </div>
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 md:[&>*:last-child:nth-child(odd)]:col-span-2 xl:[&>*:last-child:nth-child(odd)]:col-span-1">
             {Array.from({ length: 3 }).map((_, idx) => (
               <Skeleton key={idx} className="h-40 rounded-2xl bg-white/50 backdrop-blur-md" />
             ))}
           </div>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
             {Array.from({ length: 2 }).map((_, idx) => (
               <Skeleton key={idx} className="h-64 rounded-2xl bg-white/50 backdrop-blur-md" />
             ))}
@@ -141,7 +141,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
+          <section className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-5 max-md:[&>*:last-child]:col-span-2 md:max-xl:[&>*:last-child]:col-span-1">
             <StatCard label="Total Documents" value={documents.length} helper="Total uploaded files cataloged" icon={FileText} />
             <StatCard label="Storage Used" value={formatBytes(stats.totalSize)} helper="Cloud media currently tracked" icon={HardDrive} />
             <StatCard label="All Sessions" value={sessions.length} helper={`${latestSessions.length} recent sessions visible below`} icon={Clock} />
@@ -149,7 +149,7 @@ export default function DashboardPage() {
             <StatCard label="Recent (24h)" value={stats.recent} helper="Files added in the last 24 hours" icon={Upload} />
           </section>
 
-          <section className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 md:[&>*:last-child:nth-child(odd)]:col-span-2 xl:[&>*:last-child:nth-child(odd)]:col-span-1">
             <div className="bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border border-white/70 dark:border-zinc-800 shadow-blue-950/10 dark:shadow-black/40 rounded-2xl shadow-lg p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Process Status</h2>
@@ -198,7 +198,7 @@ export default function DashboardPage() {
                 <AlertCircle className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
               </div>
               <div className="flex flex-wrap gap-2">
-                <Link href="/" className="rounded-lg bg-black dark:bg-zinc-100 px-3 py-2 text-xs font-semibold text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200">
+                <Link href="/" className="rounded-lg bg-black dark:bg-zinc-100 px-3 py-2.5 sm:py-2 text-xs font-semibold text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200">
                   Manage Documents
                 </Link>
                 <Link href="/main-screen" className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
@@ -211,7 +211,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <section className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
             <div className="bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border border-white/70 dark:border-zinc-800 shadow-blue-950/10 dark:shadow-black/40 rounded-2xl shadow-lg overflow-hidden">
               <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800/50">
                 <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">All Sessions</h2>
@@ -220,7 +220,7 @@ export default function DashboardPage() {
                 {latestSessions.length === 0 ? (
                   <p className="p-5 text-sm text-zinc-400">No sessions yet.</p>
                 ) : latestSessions.map((session) => (
-                  <div key={session.id} className="px-5 py-4 flex items-center justify-between gap-4">
+                  <div key={session.id} className="px-4 py-3 sm:px-5 sm:py-4 flex items-center justify-between gap-3 sm:gap-4">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{session.id}</p>
                       <p className="text-xs text-zinc-400">{formatDate(session.createdAt)}</p>
@@ -242,7 +242,7 @@ export default function DashboardPage() {
                 {latestDocuments.length === 0 ? (
                   <p className="p-5 text-sm text-zinc-400">No documents yet.</p>
                 ) : latestDocuments.map((doc) => (
-                  <div key={doc.id} className="px-5 py-4 flex items-center justify-between gap-4">
+                  <div key={doc.id} className="px-4 py-3 sm:px-5 sm:py-4 flex items-center justify-between gap-3 sm:gap-4">
                     <div className="min-w-0 flex items-center gap-3">
                       <div className="size-9 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 flex items-center justify-center">
                         {doc.mimeType.startsWith('video/') ? <Video className="size-4 text-purple-500 dark:text-purple-400" /> : <FileText className="size-4 text-zinc-500 dark:text-zinc-400" />}
@@ -267,14 +267,14 @@ export default function DashboardPage() {
             {screens.length === 0 ? (
               <p className="text-sm text-zinc-400">No screens registered.</p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 3xl:grid-cols-6 gap-4">
                 {screens.map((screen) => (
                   <div key={screen.id} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 p-4 relative group">
                     <div className="flex items-start justify-between">
                       <div className="size-10 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-500 dark:text-zinc-400 mb-3">
                         <Monitor className="size-5" />
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => {
                             const url = `${window.location.origin}/view/screen/${screen.id}`

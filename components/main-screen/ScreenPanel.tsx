@@ -2,10 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import type { DragEvent } from 'react'
-import { ExternalLink, FileText, Globe2, Monitor, Plus, Trash2, X } from 'lucide-react'
+import { ExternalLink, FileText, Globe2, Monitor, Plus, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { FileIcon, iconBg } from './shared'
 import { PreviewSkeleton, ScreenGridSkeleton } from './skeletons'
+import {
+  ASSIGN_REQUEST_EVENT,
+  TOUCH_DROP_EVENT,
+  TOUCH_HOVER_EVENT,
+  type TouchDropDetail,
+  type TouchHoverDetail,
+} from './touch-drag'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 type DocumentAsset = {
   id: string
@@ -134,6 +142,10 @@ export default function ScreenPanel() {
   const [isCreating, setIsCreating] = useState(false)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const [assigningId, setAssigningId] = useState<string | null>(null)
+  // Touch-friendly alternatives to dragging.
+  const [pickDocument, setPickDocument] = useState<DocumentAsset | null>(null)
+  const [addTargetId, setAddTargetId] = useState<string | null>(null)
+  const [linkValue, setLinkValue] = useState('')
 
   useEffect(() => {
     fetch('/api/screens')
@@ -312,6 +324,50 @@ export default function ScreenPanel() {
     }
   }
 
+  // Touch/pen drags (see touch-drag.ts) and the "Assign to screen" button arrive as window events.
+  useEffect(() => {
+    const onHover = (event: Event) => {
+      setDragOverId((event as CustomEvent<TouchHoverDetail>).detail.screenId)
+    }
+    const onDrop = (event: Event) => {
+      const { screenId, payload } = (event as CustomEvent<TouchDropDetail<DocumentAsset>>).detail
+      if (payload?.id) assignAsset(screenId, payload)
+    }
+    const onAssignRequest = (event: Event) => {
+      setPickDocument((event as CustomEvent<{ document: DocumentAsset }>).detail.document)
+    }
+
+    window.addEventListener(TOUCH_HOVER_EVENT, onHover)
+    window.addEventListener(TOUCH_DROP_EVENT, onDrop)
+    window.addEventListener(ASSIGN_REQUEST_EVENT, onAssignRequest)
+    return () => {
+      window.removeEventListener(TOUCH_HOVER_EVENT, onHover)
+      window.removeEventListener(TOUCH_DROP_EVENT, onDrop)
+      window.removeEventListener(ASSIGN_REQUEST_EVENT, onAssignRequest)
+    }
+  }, [])
+
+  async function submitLink() {
+    const target = addTargetId
+    const value = linkValue.trim()
+    if (!target || !value) return
+    try {
+      const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`)
+      setAddTargetId(null)
+      setLinkValue('')
+      await assignLink(target, url.toString())
+    } catch {
+      toast.error('Enter a valid link')
+    }
+  }
+
+  function handleFilePicked(file: File | undefined) {
+    const target = addTargetId
+    if (!file || !target) return
+    setAddTargetId(null)
+    assignFile(target, file)
+  }
+
   function handleDrop(event: DragEvent<HTMLDivElement>, screenId: string) {
     event.preventDefault()
     const { dataTransfer } = event
@@ -350,22 +406,22 @@ export default function ScreenPanel() {
   }
 
   return (
-    <section className="flex-1 rounded-2xl bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border border-white/70 dark:border-zinc-800 shadow-lg shadow-blue-950/10 dark:shadow-black/40 flex flex-col overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-zinc-800 shrink-0 flex items-center justify-between">
+    <section className="order-1 flex h-[44%] min-h-[240px] shrink-0 flex-col md:order-2 md:h-auto md:min-h-0 md:min-w-0 md:flex-1 rounded-2xl bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border border-white/70 dark:border-zinc-800 shadow-lg shadow-blue-950/10 dark:shadow-black/40 flex flex-col overflow-hidden">
+      <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-gray-100 dark:border-zinc-800 shrink-0 flex items-center justify-between">
         <h2 className="text-xs font-semibold text-gray-400 dark:text-zinc-500 tracking-widest uppercase">
           Screens
         </h2>
         <button
           onClick={addScreen}
           disabled={isCreating}
-          className="flex items-center gap-1.5 text-xs font-semibold text-white dark:text-black bg-black dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+          className="flex items-center gap-1.5 text-xs font-semibold text-white dark:text-black bg-black dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 px-3 py-2 md:py-1.5 rounded-lg cursor-pointer transition-colors"
         >
           <Plus className="size-3.5" />
           Add Screen
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-5" data-autoscroll>
         {loading ? (
           <ScreenGridSkeleton />
         ) : screens.length === 0 ? (
@@ -375,7 +431,7 @@ export default function ScreenPanel() {
             <p className="text-xs">Add a screen to track display endpoints.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+          <div className="flex gap-3 overflow-x-auto snap-x pb-2 md:grid md:grid-cols-1 md:overflow-visible md:pb-0 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 md:gap-4 lg:gap-5" data-autoscroll>
             {screens.map((screen) => {
               const assets = screen.assets || []
               const latestAsset = assets[0]
@@ -384,6 +440,7 @@ export default function ScreenPanel() {
               return (
                 <div
                   key={screen.id}
+                  data-drop-screen={screen.id}
                   onDragOver={(event) => {
                     event.preventDefault()
                     event.dataTransfer.dropEffect = 'copy'
@@ -394,7 +451,7 @@ export default function ScreenPanel() {
                     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragOverId(null)
                   }}
                   onDrop={(event) => handleDrop(event, screen.id)}
-                  className={`group relative aspect-square overflow-hidden rounded-2xl border bg-zinc-50 dark:bg-zinc-900 transition-all ${
+                  className={`group relative aspect-square w-48 shrink-0 snap-start overflow-hidden sm:w-52 md:w-auto rounded-2xl border bg-zinc-50 dark:bg-zinc-900 transition-all ${
                     isActiveDrop
                       ? 'border-black dark:border-white ring-4 ring-black/10 dark:ring-white/10'
                       : 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-600 hover:shadow-sm'
@@ -406,22 +463,30 @@ export default function ScreenPanel() {
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center text-gray-400 dark:text-zinc-500">
                         <Monitor className="size-12" />
-                        <p className="text-xs font-medium">Drop a document, photo or link here</p>
+                        <p className="text-xs font-medium">Drag a document here, or tap + to add</p>
                       </div>
                     )}
                   </div>
 
-                  <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 bg-gradient-to-b from-white/95 dark:from-zinc-900/95 to-white/0 dark:to-zinc-900/0 p-4">
+                  <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 max-sm:flex-col-reverse max-sm:items-stretch bg-gradient-to-b from-white/95 dark:from-zinc-900/95 to-white/0 dark:to-zinc-900/0 p-2.5 sm:p-4">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-zinc-950 dark:text-zinc-100">{screen.name}</p>
                       <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                         {latestAsset ? '1 asset assigned' : 'No asset assigned'}
                       </p>
                     </div>
-                    <div className="flex shrink-0 gap-1">
+                    <div className="flex shrink-0 gap-1 max-sm:justify-end">
+                      <button
+                        onClick={() => setAddTargetId(screen.id)}
+                        className="flex size-9 md:size-8 items-center justify-center rounded-lg bg-white/90 dark:bg-zinc-800/90 text-zinc-500 dark:text-zinc-400 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700 transition hover:text-black dark:hover:text-white"
+                        aria-label={`Add a file or link to ${screen.name}`}
+                        title="Add file or link"
+                      >
+                        <Plus className="size-4" />
+                      </button>
                       <button
                         onClick={() => window.open(`/view/screen/${screen.id}`, '_blank', 'noopener,noreferrer')}
-                        className="flex size-8 items-center justify-center rounded-lg bg-white/90 dark:bg-zinc-800/90 text-zinc-500 dark:text-zinc-400 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700 transition hover:text-black dark:hover:text-white"
+                        className="flex size-9 md:size-8 items-center justify-center rounded-lg bg-white/90 dark:bg-zinc-800/90 text-zinc-500 dark:text-zinc-400 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700 transition hover:text-black dark:hover:text-white"
                         aria-label={`Open ${screen.name}`}
                         title="Open screen URL"
                       >
@@ -429,7 +494,7 @@ export default function ScreenPanel() {
                       </button>
                       <button
                         onClick={() => removeScreen(screen.id)}
-                        className="flex size-8 items-center justify-center rounded-lg bg-white/90 dark:bg-zinc-800/90 text-zinc-400 dark:text-zinc-500 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700 transition hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 dark:hover:text-rose-400"
+                        className="flex size-9 md:size-8 items-center justify-center rounded-lg bg-white/90 dark:bg-zinc-800/90 text-zinc-400 dark:text-zinc-500 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700 transition hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 dark:hover:text-rose-400"
                         aria-label={`Remove ${screen.name}`}
                         title="Remove screen"
                       >
@@ -451,7 +516,7 @@ export default function ScreenPanel() {
                   ) : null}
 
                   {latestAsset ? (
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-black/0 p-4 pt-12">
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-black/0 p-2.5 pt-10 sm:p-4 sm:pt-12">
                       <div className="flex items-end justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-xs font-semibold text-white">{latestAsset.document.name}</p>
@@ -461,7 +526,7 @@ export default function ScreenPanel() {
                         </div>
                         <button
                           onClick={() => removeAsset(screen.id, latestAsset.id)}
-                          className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white transition hover:bg-white/25"
+                          className="flex size-8 md:size-7 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white transition hover:bg-white/25"
                           aria-label={`Remove ${latestAsset.document.name}`}
                           title="Remove assigned asset"
                         >
@@ -476,6 +541,85 @@ export default function ScreenPanel() {
           </div>
         )}
       </div>
+
+      {/* "Assign to screen" picker for a document chosen in the Documents panel. */}
+      <Sheet open={pickDocument !== null} onOpenChange={(open) => !open && setPickDocument(null)}>
+        <SheetContent side="bottom" className="mx-auto gap-0 p-0 sm:max-w-lg">
+          <SheetHeader className="p-4 pr-12">
+            <SheetTitle className="truncate">Assign to screen</SheetTitle>
+            <SheetDescription className="truncate">{pickDocument?.name}</SheetDescription>
+          </SheetHeader>
+          <div className="max-h-[50dvh] space-y-2 overflow-y-auto px-4 pb-4">
+            {screens.length === 0 ? (
+              <p className="py-6 text-center text-sm text-zinc-500">No screens yet. Add a screen first.</p>
+            ) : (
+              screens.map((screen) => (
+                <button
+                  key={screen.id}
+                  onClick={() => {
+                    if (pickDocument) assignAsset(screen.id, pickDocument)
+                    setPickDocument(null)
+                  }}
+                  className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-zinc-200 px-4 text-left text-sm font-semibold transition hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+                >
+                  <Monitor className="size-4 shrink-0 text-zinc-500" />
+                  <span className="min-w-0 flex-1 truncate">{screen.name}</span>
+                  <span className="shrink-0 text-xs font-medium text-zinc-400">
+                    {screen.assets?.[0] ? 'Replace asset' : 'Empty'}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Add a file from the device or a link to one screen (no dragging needed). */}
+      <Sheet open={addTargetId !== null} onOpenChange={(open) => !open && setAddTargetId(null)}>
+        <SheetContent side="bottom" className="mx-auto gap-0 p-0 sm:max-w-lg">
+          <SheetHeader className="p-4 pr-12">
+            <SheetTitle>Add to {screens.find((screen) => screen.id === addTargetId)?.name ?? 'screen'}</SheetTitle>
+            <SheetDescription>Upload a photo, video or file, or paste a link.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 px-4 pb-4">
+            <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-black px-4 text-sm font-semibold text-white dark:bg-white dark:text-black">
+              <Upload className="size-4" />
+              Choose from device
+              <input
+                type="file"
+                className="sr-only"
+                onChange={(event) => {
+                  handleFilePicked(event.target.files?.[0])
+                  event.target.value = ''
+                }}
+              />
+            </label>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                submitLink()
+              }}
+              className="flex gap-2"
+            >
+              <input
+                type="url"
+                inputMode="url"
+                value={linkValue}
+                onChange={(event) => setLinkValue(event.target.value)}
+                placeholder="https://example.com"
+                className="h-12 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-3 text-base outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900"
+              />
+              <button
+                type="submit"
+                disabled={!linkValue.trim()}
+                className="h-12 rounded-xl border border-zinc-200 px-4 text-sm font-semibold disabled:opacity-50 dark:border-zinc-800"
+              >
+                Add link
+              </button>
+            </form>
+          </div>
+        </SheetContent>
+      </Sheet>
     </section>
   )
 }
