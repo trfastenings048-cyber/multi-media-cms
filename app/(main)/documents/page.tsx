@@ -250,27 +250,71 @@ export default function DocumentsDashboard() {
 
     try {
       if (uploadFiles.length > 0) {
-        const formData = new FormData()
-        uploadFiles.forEach(({ file }) => formData.append('files', file))
+        const timestamp = Math.round(new Date().getTime() / 1000);
+        const folder = "rubenius/documents";
+        const signRes = await fetch("/api/cloudinary/sign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ params: { timestamp, folder } })
+        });
+        
+        if (!signRes.ok) throw new Error("Failed to get upload signature");
+        const { signature, apiKey, cloudName } = await signRes.json();
 
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest()
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-              setUploadProgress(Math.round((e.loaded / e.total) * 100))
-            }
-          }
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve()
-            } else {
-              reject(new Error('Upload failed'))
-            }
-          }
-          xhr.onerror = () => reject(new Error('Network error'))
-          xhr.open('POST', '/api/upload')
-          xhr.send(formData)
-        })
+        const uploadedFilesArr: Array<{ name: string; size: number; mimeType: string; url: string; publicId: string }> = [];
+        let totalLoaded = 0;
+        const totalSize = uploadFiles.reduce((acc, f) => acc + f.file.size, 0);
+
+        for (let i = 0; i < uploadFiles.length; i++) {
+          const { file } = uploadFiles[i];
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("api_key", apiKey);
+          formData.append("timestamp", timestamp.toString());
+          formData.append("signature", signature);
+          formData.append("folder", folder);
+
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.upload.onprogress = (e) => {
+              if (e.lengthComputable) {
+                const currentProgress = Math.round(((totalLoaded + e.loaded) / totalSize) * 100);
+                setUploadProgress(currentProgress);
+              }
+            };
+
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                totalLoaded += file.size;
+                const res = JSON.parse(xhr.responseText);
+                uploadedFilesArr.push({
+                  name: file.name,
+                  size: file.size,
+                  mimeType: file.type || "application/octet-stream",
+                  url: res.secure_url,
+                  publicId: res.public_id,
+                });
+                resolve();
+              } else {
+                reject(new Error("Cloudinary upload failed"));
+              }
+            };
+
+            xhr.onerror = () => reject(new Error("Network error"));
+            xhr.onabort = () => reject(new Error("Upload cancelled"));
+
+            xhr.open("POST", `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`);
+            xhr.send(formData);
+          });
+        }
+
+        const saveRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ files: uploadedFilesArr }),
+        });
+
+        if (!saveRes.ok) throw new Error("Failed to save documents to database");
       }
 
       if (trimmedUrl) {
