@@ -76,7 +76,7 @@ export default function FileUpload() {
       if (!signRes.ok) throw new Error("Failed to get upload signature");
       const { signature, apiKey, cloudName } = await signRes.json();
 
-      const uploadedFiles = [];
+      const uploadedFiles: Array<{ name: string; size: number; mimeType: string; url: string; publicId: string }> = [];
       let totalLoaded = 0;
       const totalSize = files.reduce((acc, f) => acc + f.file.size, 0);
 
