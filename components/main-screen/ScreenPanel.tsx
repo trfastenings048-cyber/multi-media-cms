@@ -234,12 +234,47 @@ export default function ScreenPanel() {
   async function assignFile(screenId: string, file: File) {
     setAssigningId(screenId)
     try {
-      const formData = new FormData()
-      formData.append('files', file)
-      const res = await fetch('/api/upload', { method: 'POST', body: formData })
-      const data = await res.json().catch(() => null)
+      const timestamp = Math.round(new Date().getTime() / 1000);
+      const folder = "rubenius/documents";
+      const signRes = await fetch("/api/cloudinary/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ params: { timestamp, folder } })
+      });
+      if (!signRes.ok) throw new Error("Failed to get signature");
+      const { signature, apiKey, cloudName } = await signRes.json();
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", apiKey);
+      formData.append("timestamp", timestamp.toString());
+      formData.append("signature", signature);
+      formData.append("folder", folder);
+
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+        method: "POST",
+        body: formData
+      });
+      if (!uploadRes.ok) throw new Error("Cloudinary upload failed");
+      const res = await uploadRes.json();
+
+      const uploadedFiles = [{
+        name: file.name,
+        size: file.size,
+        mimeType: file.type || "application/octet-stream",
+        url: res.secure_url,
+        publicId: res.public_id,
+      }];
+
+      const saveRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: uploadedFiles })
+      });
+      
+      const data = await saveRes.json().catch(() => null)
       const document = data?.documents?.[0] as DocumentAsset | undefined
-      if (!res.ok || !document) {
+      if (!saveRes.ok || !document) {
         toast.error(data?.error || `Failed to upload "${file.name}"`)
         return
       }

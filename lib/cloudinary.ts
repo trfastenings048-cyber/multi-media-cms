@@ -86,3 +86,17 @@ export async function uploadFile(
     publicId: result.public_id,
   }
 }
+
+export function generateSignature(paramsToSign: Record<string, string | number | boolean>) {
+  assertCloudinaryConfig()
+  return cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_SECRET_KEY!)
+}
+
+export function getCloudinaryName() {
+  return process.env.CLOUDINARY_NAME
+}
+
+export function getCloudinaryApiKey() {
+  return process.env.CLOUDINARY_API_KEY
+}
+

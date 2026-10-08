@@ -3,17 +3,16 @@ import { prisma } from '@/lib/prisma'
 import { uploadFile } from '@/lib/cloudinary'
 
 export async function POST(request: NextRequest) {
-  let formData: FormData
+  let uploadedFiles: Array<{ name: string; size: number; mimeType: string; url: string; publicId: string }> = []
+  
   try {
-    formData = await request.formData()
+    const data = await request.json()
+    uploadedFiles = data.files || []
   } catch {
-    return NextResponse.json({ error: 'Invalid form data' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON data' }, { status: 400 })
   }
 
-  const files = formData.getAll('files') as File[]
-  const validFiles = files.filter((f) => f instanceof File && f.size > 0)
-
-  if (validFiles.length === 0) {
+  if (uploadedFiles.length === 0) {
     return NextResponse.json({ error: 'No files provided' }, { status: 400 })
   }
 
@@ -22,24 +21,15 @@ export async function POST(request: NextRequest) {
   })
 
   try {
-    for (const file of validFiles) {
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const mimeType = file.type || 'application/octet-stream'
-
-      const { url: cloudinaryUrl, publicId: cloudinaryPublicId } = await uploadFile(
-        buffer,
-        file.name,
-        mimeType
-      )
-
+    for (const file of uploadedFiles) {
       await prisma.document.create({
         data: {
           sessionId: session.id,
           name: file.name,
           size: file.size,
-          mimeType,
-          cloudinaryUrl,
-          cloudinaryPublicId,
+          mimeType: file.mimeType || 'application/octet-stream',
+          cloudinaryUrl: file.url,
+          cloudinaryPublicId: file.publicId,
           status: 'UPLOADED',
         },
       })
@@ -57,7 +47,7 @@ export async function POST(request: NextRequest) {
       .update({ where: { id: session.id }, data: { status: 'FAILED' } })
       .catch(() => {})
 
-    console.error('[upload]', error)
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    console.error('[upload finalize]', error)
+    return NextResponse.json({ error: 'Failed to save documents' }, { status: 500 })
   }
 }
