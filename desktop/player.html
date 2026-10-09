@@ -20,6 +20,22 @@
     const src = params.get('src') || ''
     const name = params.get('name') || ''
     const root = document.body
+    let longPressTimer = null
+
+    function startLongPress() {
+      if (!window.player?.reset) return
+      longPressTimer = setTimeout(() => window.player.reset(), 1200)
+    }
+
+    function cancelLongPress() {
+      if (longPressTimer) clearTimeout(longPressTimer)
+      longPressTimer = null
+    }
+
+    document.addEventListener('pointerdown', startLongPress)
+    document.addEventListener('pointerup', cancelLongPress)
+    document.addEventListener('pointercancel', cancelLongPress)
+    document.addEventListener('pointerleave', cancelLongPress)
 
     function el(tag, props) {
       return Object.assign(document.createElement(tag), props)

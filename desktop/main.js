@@ -393,6 +393,7 @@ function createWindow() {
 
   contentView = new WebContentsView({
     webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       sandbox: true,
       autoplayPolicy: 'no-user-gesture-required',
@@ -437,6 +438,8 @@ ipcMain.handle('overlay:submit', (_event, payload) => openScreen(payload || {}))
 ipcMain.on('overlay:cancel', () => {
   if (current) hideOverlay()
 })
+ipcMain.on('player:reset', () => showOverlay())
+ipcMain.on('player:quit', () => app.quit())
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()

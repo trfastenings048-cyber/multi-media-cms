@@ -60,6 +60,8 @@
       cursor: pointer;
     }
     button[type="submit"]:disabled { opacity: 0.6; cursor: wait; }
+    .close-button { width: 100%; margin-top: 10px; padding: 11px; border: 1px solid #52525b; border-radius: 10px; background: transparent; color: #d4d4d8; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .close-button:hover { background: #27272a; color: #fff; }
     .error { min-height: 18px; margin-top: 12px; font-size: 13px; color: #f87171; }
     .footer {
       display: flex;
@@ -75,8 +77,8 @@
 <body>
   <div class="backdrop">
     <form class="modal" id="form" autocomplete="off">
-      <h1>Enter Screen ID</h1>
-      <p class="hint">The content assigned to this screen will play full screen.</p>
+      <h1 id="modalTitle">Enter Screen ID</h1>
+      <p class="hint" id="modalHint">The content assigned to this screen will play full screen.</p>
 
       <div class="field">
         <label for="screenId">Screen ID</label>
@@ -89,6 +91,7 @@
       </div>
 
       <button type="submit" id="submit">Submit</button>
+      <button type="button" class="close-button" id="closePlayer">Close player</button>
       <div class="error" id="error" role="alert"></div>
 
       <div class="footer">
@@ -104,6 +107,8 @@
     const serverInput = document.getElementById('serverUrl')
     const serverField = document.getElementById('serverField')
     const submitButton = document.getElementById('submit')
+    const modalTitle = document.getElementById('modalTitle')
+    const modalHint = document.getElementById('modalHint')
     const errorBox = document.getElementById('error')
     const escHint = document.getElementById('escHint')
     let canCancel = false
@@ -114,6 +119,8 @@
 
     window.player.onShow((state) => {
       canCancel = state.canCancel
+      modalTitle.textContent = canCancel ? 'Reset screen' : 'Enter Screen ID'
+      modalHint.textContent = canCancel ? 'Change the screen assignment or close the player.' : 'The content assigned to this screen will play full screen.'
       escHint.hidden = !canCancel
       screenInput.value = state.screenId || ''
       serverInput.value = state.serverUrl || ''
@@ -128,6 +135,8 @@
       showServerField(serverField.hidden)
       ;(serverField.hidden ? screenInput : serverInput).focus()
     })
+
+    document.getElementById('closePlayer').addEventListener('click', () => window.player.quit())
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault()
