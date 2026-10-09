@@ -161,9 +161,14 @@ export default function ScreensDashboard() {
     )
   }
 
-  const handleCopyId = (id: string) => {
-    navigator.clipboard.writeText(id)
-    toast.success('Screen ID copied to clipboard')
+  const handleCopyUrl = async (id: string) => {
+    const screenUrl = `${window.location.origin}/view/screen/${id}`
+    try {
+      await navigator.clipboard.writeText(screenUrl)
+      toast.success('Screen URL copied to clipboard')
+    } catch {
+      toast.error('Unable to copy screen URL')
+    }
   }
 
   // Background: white at the top, light sea blue in the middle, dark blue at the bottom.
@@ -311,6 +316,14 @@ export default function ScreensDashboard() {
                       <ExternalLink className="size-4" />
                     </button>
                     <button
+                      onClick={() => handleCopyUrl(screen.id)}
+                      className="flex size-10 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      aria-label={`Copy URL for ${screen.name}`}
+                      title="Copy screen URL"
+                    >
+                      <Copy className="size-4" />
+                    </button>
+                    <button
                       onClick={() => setDeleteConfirmId(screen.id)}
                       className="flex size-10 items-center justify-center rounded-lg text-zinc-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950"
                       aria-label={`Delete ${screen.name}`}
@@ -394,10 +407,10 @@ export default function ScreensDashboard() {
                           <ExternalLink className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleCopyId(screen.id)}
+                           onClick={() => handleCopyUrl(screen.id)}
                           className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
-                          aria-label={`Copy ID for ${screen.name}`}
-                          title="Copy Screen ID"
+                           aria-label={`Copy URL for ${screen.name}`}
+                           title="Copy screen URL"
                         >
                           <Copy className="w-4 h-4" />
                         </button>
