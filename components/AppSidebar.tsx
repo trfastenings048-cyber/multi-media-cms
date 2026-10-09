@@ -84,14 +84,14 @@ export default function AppSidebar({ onNavigate, compact = false }: AppSidebarPr
       </nav>
 
       <div className={cn("space-y-3 border-t border-zinc-200 dark:border-zinc-800 pb-safe", compact ? "p-2" : "p-4")}>
-        {/* XOS is a Windows desktop app, so the download is hidden on phones and tablets. */}
+        {/* Keep the player download available in the mobile sidebar as well. */}
         <a
           href="/XOS.exe"
           download="XOS.exe"
           title={compact ? "Download XOS (Windows)" : undefined}
           aria-label="Download XOS"
           className={cn(
-            "hidden h-10 w-full items-center rounded-lg bg-blue-600 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 lg:flex",
+            "flex h-10 w-full items-center rounded-lg bg-blue-600 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700",
             compact ? "justify-center" : "gap-3 px-3"
           )}
         >
