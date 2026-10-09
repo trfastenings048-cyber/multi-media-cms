@@ -31,7 +31,7 @@ function AssetStage({ asset, kiosk }: { asset: ScreenAsset; kiosk: boolean }) {
   }
 
   if (document.mimeType.startsWith('video/')) {
-    return <video src={url} className="h-full w-full bg-black object-contain" controls={!kiosk} autoPlay muted loop />
+    return <video src={url} className="h-full w-full bg-black object-contain" controls={!kiosk} autoPlay loop />
   }
 
   if (document.sourceType === 'WEBSITE' || document.websiteUrl) {

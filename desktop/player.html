@@ -72,7 +72,7 @@
     } else if (kind === 'image') {
       root.append(el('img', { src, alt: name }))
     } else if (kind === 'video') {
-      root.append(el('video', { src, autoplay: true, muted: true, loop: true }))
+      root.append(el('video', { src, autoplay: true, loop: true }))
     } else if (kind === 'audio') {
       const box = el('div', { className: 'center' })
       box.append(el('p', { textContent: name }), el('audio', { src, autoplay: true, loop: true }))
