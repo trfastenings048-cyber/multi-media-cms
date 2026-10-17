@@ -97,7 +97,7 @@ function MediaControls({
 
 function UniversalAssetIcon() {
   return (
-    <div className="absolute left-4 top-4 z-10 flex size-10 items-center justify-center rounded-lg bg-black/70 text-white backdrop-blur" title="Universal asset viewer">
+    <div className="absolute left-4 top-4 z-10 flex size-10 items-center justify-center rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-950/30 backdrop-blur" title="Universal asset viewer">
       <Monitor className="size-5" aria-label="Universal asset viewer" />
     </div>
   )
