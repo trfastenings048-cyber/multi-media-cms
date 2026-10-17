@@ -22,7 +22,6 @@
     const root = document.body
     let longPressTimer = null
     let media = null
-    let frame = null
 
     function startLongPress() {
       if (!window.player?.reset) return
@@ -43,19 +42,12 @@
       return Object.assign(document.createElement(tag), props)
     }
 
-    function scrollWebsite(direction) {
-      if (!frame) return
-      frame.contentWindow?.postMessage({ type: 'screen-control', action: direction }, '*')
-      try { frame.contentWindow?.scrollBy({ top: direction === 'scroll-up' ? -window.innerHeight * 0.75 : window.innerHeight * 0.75, behavior: 'smooth' }) } catch {}
-    }
-
     function handleControl(command) {
       const action = command?.action
       if (action === 'play' && media) media.play().catch(() => {})
       if (action === 'pause' && media) media.pause()
       if (action === 'mute' && media) media.muted = true
       if (action === 'unmute' && media) media.muted = false
-      if (action === 'scroll-up' || action === 'scroll-down') scrollWebsite(action)
     }
 
     window.player?.onControl?.(handleControl)
@@ -115,8 +107,7 @@
       box.append(el('p', { textContent: name }), media)
       root.append(box)
     } else if (kind === 'pdf' || kind === 'website') {
-      frame = el('iframe', { src, title: name })
-      root.append(frame)
+      root.append(el('iframe', { src, title: name }))
     } else {
       const box = el('div', { className: 'center' })
       box.append(el('p', { textContent: params.get('text') || '' }))

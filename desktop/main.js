@@ -249,14 +249,6 @@ async function startRealtime() {
     const controlChannel = `screen-${target.screenId}-controls`
     client.channels.get(controlChannel).subscribe('control', (message) => {
       const action = message.data?.action
-      if ((action === 'scroll-up' || action === 'scroll-down') && contentView?.webContents) {
-        const amount = action === 'scroll-up' ? -Math.round(contentView.getBounds().height * 0.75) : Math.round(contentView.getBounds().height * 0.75)
-        const frames = contentView.webContents.mainFrame.frames
-        for (const frame of frames) {
-          if (frame === contentView.webContents.mainFrame) continue
-          frame.executeJavaScript(`window.scrollBy({ top: ${amount}, left: 0, behavior: 'smooth' })`).catch((error) => console.error('Website scroll failed', error.message))
-        }
-      }
       if (contentView?.webContents) contentView.webContents.send('player:control', message.data)
     }).catch((error) => console.error('Control subscribe failed', error.message))
   } catch (error) {
