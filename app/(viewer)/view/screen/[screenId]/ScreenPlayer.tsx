@@ -1,6 +1,7 @@
 'use client'
 
-import { FileText, Maximize2, Monitor } from 'lucide-react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
+import { FileText, Maximize2, Monitor, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import CloseButton from '../../[docId]/CloseButton'
 
 type ScreenAsset = {
@@ -22,16 +23,95 @@ type ScreenPlayerProps = {
   kiosk?: boolean
 }
 
+function MediaControls({
+  mediaRef,
+  label,
+}: {
+  mediaRef: RefObject<HTMLMediaElement | null>
+  label: string
+}) {
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [isMuted, setIsMuted] = useState(false)
+
+  useEffect(() => {
+    const media = mediaRef.current
+    if (!media) return
+
+    const syncState = () => {
+      setIsPlaying(!media.paused)
+      setIsMuted(media.muted || media.volume === 0)
+    }
+
+    syncState()
+    media.addEventListener('play', syncState)
+    media.addEventListener('pause', syncState)
+    media.addEventListener('volumechange', syncState)
+
+    return () => {
+      media.removeEventListener('play', syncState)
+      media.removeEventListener('pause', syncState)
+      media.removeEventListener('volumechange', syncState)
+    }
+  }, [mediaRef])
+
+  function togglePlay() {
+    const media = mediaRef.current
+    if (!media) return
+
+    if (media.paused) {
+      media.play().catch(() => {})
+    } else {
+      media.pause()
+    }
+  }
+
+  function toggleMute() {
+    const media = mediaRef.current
+    if (!media) return
+    media.muted = !media.muted
+  }
+
+  return (
+    <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2 rounded-xl bg-black/70 p-2 backdrop-blur">
+      <button
+        type="button"
+        onClick={togglePlay}
+        aria-label={isPlaying ? `Pause ${label}` : `Play ${label}`}
+        title={isPlaying ? 'Pause' : 'Play'}
+        className="flex size-10 items-center justify-center rounded-lg text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+      >
+        {isPlaying ? <Pause className="size-5" /> : <Play className="size-5" />}
+      </button>
+      <button
+        type="button"
+        onClick={toggleMute}
+        aria-label={isMuted ? `Unmute ${label}` : `Mute ${label}`}
+        title={isMuted ? 'Unmute' : 'Mute'}
+        className="flex size-10 items-center justify-center rounded-lg text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+      >
+        {isMuted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
+      </button>
+    </div>
+  )
+}
+
 function AssetStage({ asset, kiosk }: { asset: ScreenAsset; kiosk: boolean }) {
   const document = asset.document
   const url = document.websiteUrl || document.s3Url
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   if (document.mimeType.startsWith('image/')) {
     return <img src={url} alt={document.name} className="h-full w-full bg-black object-contain" />
   }
 
   if (document.mimeType.startsWith('video/')) {
-    return <video src={url} className="h-full w-full bg-black object-contain" controls={!kiosk} autoPlay loop />
+    return (
+      <div className="relative h-full w-full">
+        <video ref={videoRef} src={url} className="h-full w-full bg-black object-contain" controls={!kiosk} autoPlay loop />
+        {kiosk && <MediaControls mediaRef={videoRef} label="video" />}
+      </div>
+    )
   }
 
   if (document.sourceType === 'WEBSITE' || document.websiteUrl) {
@@ -43,7 +123,10 @@ function AssetStage({ asset, kiosk }: { asset: ScreenAsset; kiosk: boolean }) {
       <div className="flex h-full w-full flex-col items-center justify-center gap-5 bg-zinc-950 p-8 text-white">
         <FileText className="size-16 text-white/40" />
         <p className="max-w-xl text-center text-lg font-bold">{document.name}</p>
-        <audio src={url} controls={!kiosk} autoPlay loop className="w-full max-w-xl" />
+        <div className="relative w-full max-w-xl">
+          <audio ref={audioRef} src={url} controls={!kiosk} autoPlay loop className="w-full" />
+          {kiosk && <MediaControls mediaRef={audioRef} label="audio" />}
+        </div>
       </div>
     )
   }
