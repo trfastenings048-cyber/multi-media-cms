@@ -40,7 +40,10 @@ export default function ScreenControlsPanel() {
     setSending(true)
     try {
       const tokenResponse = await fetch(`/api/screens/${screenId}/controls/token?mode=publish`)
-      if (!tokenResponse.ok) throw new Error('Realtime authorization failed')
+      if (!tokenResponse.ok) {
+        const details = await tokenResponse.json().catch(() => null)
+        throw new Error(details?.error || `Realtime authorization failed (${tokenResponse.status})`)
+      }
       const token = await tokenResponse.json()
       const client = new Realtime({ token: token.token })
       await client.channels.get(token.channel).publish('control', { action, commandId: crypto.randomUUID() })
