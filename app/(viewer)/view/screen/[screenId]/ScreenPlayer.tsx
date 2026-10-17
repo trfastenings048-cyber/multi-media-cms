@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { FileAudio, FileText, Maximize2, Monitor, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import { Realtime } from 'ably'
 import CloseButton from '../../[docId]/CloseButton'
 
 type ScreenAsset = {
@@ -111,6 +112,32 @@ function AssetStage({ asset, kiosk }: { asset: ScreenAsset; kiosk: boolean }) {
   const mediaName = `${document.name} ${url}`.toLowerCase()
   const isVideo = document.mimeType.startsWith('video/') || /\.(mp4|webm|mov|m4v|avi|mkv)(?:[?#]|$)/i.test(mediaName)
   const isAudio = document.mimeType.startsWith('audio/') || /\.(mp3|wav|aac|m4a|ogg|flac)(?:[?#]|$)/i.test(mediaName)
+
+  useEffect(() => {
+    if (!kiosk) return
+    let client: Realtime | null = null
+    let active = true
+    fetch(`/api/screens/${encodeURIComponent(window.location.pathname.split('/').pop() || '')}/controls/token`)
+      .then((response) => response.json())
+      .then(async (token) => {
+        if (!active || !token.token) return
+        client = new Realtime({ token: token.token })
+        await client.channels.get(token.channel).subscribe('control', (message) => {
+          const action = message.data?.action
+          const media = videoRef.current || audioRef.current
+          if (action === 'play') media?.play().catch(() => {})
+          if (action === 'pause') media?.pause()
+          if (action === 'mute' && media) media.muted = true
+          if (action === 'unmute' && media) media.muted = false
+          if (action === 'scroll-up' || action === 'scroll-down') {
+            const iframe = globalThis.document.querySelector('iframe')
+            iframe?.contentWindow?.postMessage({ type: 'screen-control', action }, '*')
+          }
+        })
+      })
+      .catch(() => {})
+    return () => { active = false; client?.close() }
+  }, [kiosk])
 
   if (!isVideo && !isAudio && document.mimeType.startsWith('image/')) {
     return (

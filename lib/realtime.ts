@@ -6,6 +6,7 @@
 const PUBLISH_TIMEOUT_MS = 5000
 
 export const screenChannel = (screenId: string) => `screen-${screenId}`
+export const screenControlChannel = (screenId: string) => `screen-${screenId}-controls`
 
 export async function publishScreenChanged(screenId: string) {
   const key = process.env.ABLY_API_KEY
