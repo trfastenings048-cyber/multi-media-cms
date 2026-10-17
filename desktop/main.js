@@ -6,6 +6,10 @@ const { pipeline } = require('stream/promises')
 const { pathToFileURL } = require('url')
 const Ably = require('ably')
 
+// Chromium can promote playing video to a hardware surface above DOM layers.
+// Keep video in the normal compositor so the always-visible HTML controls remain on top.
+app.disableHardwareAcceleration()
+
 // No polling and no retry loops. The player syncs what is assigned to its screen ONCE per
 // launch, saves it to local disk, and plays from the local copy. If the server cannot be
 // reached it plays the last saved copy. While running it holds one idle connection to Ably
