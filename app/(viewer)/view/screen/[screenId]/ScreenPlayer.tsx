@@ -100,12 +100,15 @@ function AssetStage({ asset, kiosk }: { asset: ScreenAsset; kiosk: boolean }) {
   const url = document.websiteUrl || document.s3Url
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const mediaName = `${document.name} ${url}`.toLowerCase()
+  const isVideo = document.mimeType.startsWith('video/') || /\.(mp4|webm|mov|m4v|avi|mkv)(?:[?#]|$)/i.test(mediaName)
+  const isAudio = document.mimeType.startsWith('audio/') || /\.(mp3|wav|aac|m4a|ogg|flac)(?:[?#]|$)/i.test(mediaName)
 
-  if (document.mimeType.startsWith('image/')) {
+  if (!isVideo && !isAudio && document.mimeType.startsWith('image/')) {
     return <img src={url} alt={document.name} className="h-full w-full bg-black object-contain" />
   }
 
-  if (document.mimeType.startsWith('video/')) {
+  if (isVideo) {
     return (
       <div className="relative h-full w-full">
         <video ref={videoRef} src={url} className="h-full w-full bg-black object-contain" controls={!kiosk} autoPlay loop />
@@ -118,7 +121,7 @@ function AssetStage({ asset, kiosk }: { asset: ScreenAsset; kiosk: boolean }) {
     return <iframe src={url} title={document.name} className="h-full w-full border-0 bg-white" />
   }
 
-  if (document.mimeType.startsWith('audio/')) {
+  if (isAudio) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-5 bg-zinc-950 p-8 text-white">
         <FileText className="size-16 text-white/40" />
