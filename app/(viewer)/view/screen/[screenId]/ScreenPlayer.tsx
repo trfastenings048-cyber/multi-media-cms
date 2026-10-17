@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { FileText, Maximize2, Monitor, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import { FileAudio, FileText, FileVideo, Globe2, Image as ImageIcon, Maximize2, Monitor, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import CloseButton from '../../[docId]/CloseButton'
 
 type ScreenAsset = {
@@ -95,6 +95,25 @@ function MediaControls({
   )
 }
 
+function AssetTypeBadge({ kind }: { kind: 'image' | 'video' | 'audio' | 'website' | 'pdf' | 'file' }) {
+  const config = {
+    image: { icon: ImageIcon, label: 'Image' },
+    video: { icon: FileVideo, label: 'Video' },
+    audio: { icon: FileAudio, label: 'Audio' },
+    website: { icon: Globe2, label: 'Website' },
+    pdf: { icon: FileText, label: 'PDF' },
+    file: { icon: FileText, label: 'File' },
+  }[kind]
+  const Icon = config.icon
+
+  return (
+    <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-lg bg-black/70 px-3 py-2 text-xs font-semibold text-white backdrop-blur">
+      <Icon className="size-4" aria-hidden="true" />
+      <span>{config.label}</span>
+    </div>
+  )
+}
+
 function AssetStage({ asset, kiosk }: { asset: ScreenAsset; kiosk: boolean }) {
   const document = asset.document
   const url = document.websiteUrl || document.s3Url
@@ -105,29 +124,41 @@ function AssetStage({ asset, kiosk }: { asset: ScreenAsset; kiosk: boolean }) {
   const isAudio = document.mimeType.startsWith('audio/') || /\.(mp3|wav|aac|m4a|ogg|flac)(?:[?#]|$)/i.test(mediaName)
 
   if (!isVideo && !isAudio && document.mimeType.startsWith('image/')) {
-    return <img src={url} alt={document.name} className="h-full w-full bg-black object-contain" />
+    return (
+      <div className="relative h-full w-full">
+        <img src={url} alt={document.name} className="h-full w-full bg-black object-contain" />
+        <AssetTypeBadge kind="image" />
+      </div>
+    )
   }
 
   if (isVideo) {
     return (
       <div className="relative h-full w-full">
         <video ref={videoRef} src={url} className="h-full w-full bg-black object-contain" controls={!kiosk} autoPlay loop />
+        <AssetTypeBadge kind="video" />
         {kiosk && <MediaControls mediaRef={videoRef} label="video" />}
       </div>
     )
   }
 
   if (document.sourceType === 'WEBSITE' || document.websiteUrl) {
-    return <iframe src={url} title={document.name} className="h-full w-full border-0 bg-white" />
+    return (
+      <div className="relative h-full w-full">
+        <iframe src={url} title={document.name} className="h-full w-full border-0 bg-white" />
+        <AssetTypeBadge kind="website" />
+      </div>
+    )
   }
 
   if (isAudio) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-5 bg-zinc-950 p-8 text-white">
-        <FileText className="size-16 text-white/40" />
+        <FileAudio className="size-16 text-white/40" />
         <p className="max-w-xl text-center text-lg font-bold">{document.name}</p>
         <div className="relative w-full max-w-xl">
           <audio ref={audioRef} src={url} controls={!kiosk} autoPlay loop className="w-full" />
+          <AssetTypeBadge kind="audio" />
           {kiosk && <MediaControls mediaRef={audioRef} label="audio" />}
         </div>
       </div>
@@ -135,12 +166,18 @@ function AssetStage({ asset, kiosk }: { asset: ScreenAsset; kiosk: boolean }) {
   }
 
   if (document.mimeType === 'application/pdf') {
-    return <iframe src={url} title={document.name} className="h-full w-full border-0 bg-white" />
+    return (
+      <div className="relative h-full w-full">
+        <iframe src={url} title={document.name} className="h-full w-full border-0 bg-white" />
+        <AssetTypeBadge kind="pdf" />
+      </div>
+    )
   }
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-5 bg-zinc-950 p-8 text-center text-white">
+    <div className="relative flex h-full w-full flex-col items-center justify-center gap-5 bg-zinc-950 p-8 text-center text-white">
       <FileText className="size-16 text-white/40" />
+      <AssetTypeBadge kind="file" />
       <p className="max-w-xl text-lg font-bold">{document.name}</p>
       <a
         href={url}
