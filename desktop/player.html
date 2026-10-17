@@ -5,13 +5,14 @@
   <title>XOS</title>
   <style>
     html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: #fff; font-family: system-ui, sans-serif; }
-    img, video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+    body { position: relative; isolation: isolate; }
+    img, video { position: relative; z-index: 0; width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
     iframe { width: 100%; height: 100%; border: 0; background: #fff; display: block; }
     .center { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 32px; text-align: center; background: #09090b; }
     .logo { position: absolute; top: 0; left: 0; width: 220px; height: 220px; border-radius: 50%; overflow: hidden; background: #fff; box-shadow: 0 0 40px rgba(255,255,255,.18); will-change: transform; }
     .logo img { width: 100%; height: 100%; object-fit: contain; padding: 14%; box-sizing: border-box; background: #fff; }
     .center p { margin: 0; max-width: 640px; font-size: 20px; font-weight: 600; opacity: .85; }
-    .video-controls { position: fixed; left: 24px; bottom: 24px; z-index: 2147483647; display: flex !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto; gap: 8px; padding: 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 16px; background: rgba(9,9,11,.78); box-shadow: 0 14px 34px rgba(0,0,0,.35); backdrop-filter: blur(12px); }
+    .video-controls { position: absolute; left: 24px; bottom: 24px; z-index: 2147483647; display: flex !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto; gap: 8px; padding: 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 16px; background: rgba(9,9,11,.9); box-shadow: 0 14px 34px rgba(0,0,0,.55); backdrop-filter: blur(12px); }
     .video-controls button { display: flex; width: 44px; height: 44px; align-items: center; justify-content: center; border: 0; border-radius: 11px; background: #2563eb; color: white; cursor: pointer; transition: background .16s ease, transform .16s ease; }
     .video-controls button:hover { background: #1d4ed8; transform: translateY(-1px); }
     .video-controls button:active { transform: scale(.94); }
