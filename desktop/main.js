@@ -246,6 +246,10 @@ async function startRealtime() {
       connectedBefore = true
     })
     client.channels.get(info.channel).subscribe('changed', scheduleLiveSync).catch((error) => console.error('Realtime subscribe failed', error.message))
+    const controlChannel = `screen-${target.screenId}-controls`
+    client.channels.get(controlChannel).subscribe('control', (message) => {
+      if (contentView?.webContents) contentView.webContents.send('player:control', message.data)
+    }).catch((error) => console.error('Control subscribe failed', error.message))
   } catch (error) {
     console.error('Realtime unavailable', error)
   }
