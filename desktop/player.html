@@ -56,6 +56,7 @@
     const icons = {
       play: '<svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7V5Z" fill="currentColor" stroke="none"/></svg>',
       pause: '<svg viewBox="0 0 24 24"><path d="M7 5v14M17 5v14"/></svg>',
+      close: '<svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>',
       mute: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5ZM16 9l5 5m0-5-5 5"/></svg>',
       unmute: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5ZM15 9.5a4 4 0 0 1 0 5m2.5-7.5a8 8 0 0 1 0 10"/></svg>',
     }
@@ -75,10 +76,12 @@
     function createVideoControls() {
       videoControls = el('div', { className: 'video-controls' })
       playButton = el('button', { type: 'button' })
+      const closeButton = el('button', { type: 'button', 'aria-label': 'Close player', title: 'Close player', innerHTML: icons.close })
       muteButton = el('button', { type: 'button' })
       playButton.addEventListener('click', () => media?.paused ? media.play().catch(() => {}) : media?.pause())
+      closeButton.addEventListener('click', () => window.player?.quit?.())
       muteButton.addEventListener('click', () => { if (media) media.muted = !media.muted })
-      videoControls.append(playButton, muteButton)
+      videoControls.append(playButton, closeButton, muteButton)
       root.append(videoControls)
       media.addEventListener('play', syncVideoControls)
       media.addEventListener('pause', syncVideoControls)
