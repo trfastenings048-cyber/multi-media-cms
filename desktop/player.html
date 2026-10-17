@@ -11,6 +11,13 @@
     .logo { position: absolute; top: 0; left: 0; width: 220px; height: 220px; border-radius: 50%; overflow: hidden; background: #fff; box-shadow: 0 0 40px rgba(255,255,255,.18); will-change: transform; }
     .logo img { width: 100%; height: 100%; object-fit: contain; padding: 14%; box-sizing: border-box; background: #fff; }
     .center p { margin: 0; max-width: 640px; font-size: 20px; font-weight: 600; opacity: .85; }
+    .video-controls { position: fixed; left: 24px; bottom: 24px; z-index: 10; display: flex; gap: 8px; padding: 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 16px; background: rgba(9,9,11,.78); box-shadow: 0 14px 34px rgba(0,0,0,.35); backdrop-filter: blur(12px); }
+    .video-controls button { display: flex; width: 44px; height: 44px; align-items: center; justify-content: center; border: 0; border-radius: 11px; background: #2563eb; color: white; cursor: pointer; transition: background .16s ease, transform .16s ease; }
+    .video-controls button:hover { background: #1d4ed8; transform: translateY(-1px); }
+    .video-controls button:active { transform: scale(.94); }
+    .video-controls button:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+    .video-controls svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+    @media (max-width: 600px) { .video-controls { left: 12px; bottom: 12px; } .video-controls button { width: 48px; height: 48px; } }
   </style>
 </head>
 <body>
@@ -22,6 +29,9 @@
     const root = document.body
     let longPressTimer = null
     let media = null
+    let videoControls = null
+    let playButton = null
+    let muteButton = null
 
     function startLongPress() {
       if (!window.player?.reset) return
@@ -40,6 +50,39 @@
 
     function el(tag, props) {
       return Object.assign(document.createElement(tag), props)
+    }
+
+    const icons = {
+      play: '<svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7V5Z" fill="currentColor" stroke="none"/></svg>',
+      pause: '<svg viewBox="0 0 24 24"><path d="M7 5v14M17 5v14"/></svg>',
+      mute: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5ZM16 9l5 5m0-5-5 5"/></svg>',
+      unmute: '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5ZM15 9.5a4 4 0 0 1 0 5m2.5-7.5a8 8 0 0 1 0 10"/></svg>',
+    }
+
+    function syncVideoControls() {
+      if (!media || !playButton || !muteButton) return
+      const playing = !media.paused
+      const muted = media.muted || media.volume === 0
+      playButton.innerHTML = playing ? icons.pause : icons.play
+      playButton.setAttribute('aria-label', playing ? 'Pause video' : 'Play video')
+      playButton.title = playing ? 'Pause video' : 'Play video'
+      muteButton.innerHTML = muted ? icons.unmute : icons.mute
+      muteButton.setAttribute('aria-label', muted ? 'Unmute video' : 'Mute video')
+      muteButton.title = muted ? 'Unmute video' : 'Mute video'
+    }
+
+    function createVideoControls() {
+      videoControls = el('div', { className: 'video-controls' })
+      playButton = el('button', { type: 'button' })
+      muteButton = el('button', { type: 'button' })
+      playButton.addEventListener('click', () => media?.paused ? media.play().catch(() => {}) : media?.pause())
+      muteButton.addEventListener('click', () => { if (media) media.muted = !media.muted })
+      videoControls.append(playButton, muteButton)
+      root.append(videoControls)
+      media.addEventListener('play', syncVideoControls)
+      media.addEventListener('pause', syncVideoControls)
+      media.addEventListener('volumechange', syncVideoControls)
+      syncVideoControls()
     }
 
     function handleControl(command) {
@@ -101,6 +144,7 @@
     } else if (kind === 'video') {
       media = el('video', { src, autoplay: true, loop: true })
       root.append(media)
+      createVideoControls()
     } else if (kind === 'audio') {
       const box = el('div', { className: 'center' })
       media = el('audio', { src, autoplay: true, loop: true })
