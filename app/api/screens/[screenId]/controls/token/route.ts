@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Ably from 'ably'
 import { requireUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { screenControlChannel } from '@/lib/realtime'
@@ -20,18 +21,15 @@ export async function GET(
   const key = process.env.ABLY_API_KEY
   if (!key) return NextResponse.json({ error: 'Realtime controls are not configured' }, { status: 503 })
 
-  const capability = JSON.stringify({ [screenControlChannel(screenId)]: [mode] })
-  const response = await fetch(`https://rest.ably.io/keys/${encodeURIComponent(key.split(':')[0])}/requestToken`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${Buffer.from(key).toString('base64')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ capability, ttl: 60 * 60 * 1000 }),
-    signal: AbortSignal.timeout(5000),
-  })
-
-  if (!response.ok) return NextResponse.json({ error: 'Unable to create realtime token' }, { status: 502 })
-  const token = await response.json()
-  return NextResponse.json({ ...token, channel: screenControlChannel(screenId) })
+  try {
+    const client = new Ably.Rest({ key })
+    const token = await client.auth.requestToken({
+      capability: { [screenControlChannel(screenId)]: [mode] },
+      ttl: 60 * 60 * 1000,
+    })
+    return NextResponse.json({ ...token, channel: screenControlChannel(screenId) })
+  } catch (error) {
+    console.error('[controls token]', error)
+    return NextResponse.json({ error: 'Unable to create realtime token' }, { status: 502 })
+  }
 }
