@@ -30,7 +30,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { formatDate } from '@/components/main-screen/shared'
-import ScreenControlsPanel from '@/components/screen-controls/ScreenControlsPanel'
 
 type AssignedAsset = {
   id: string
@@ -192,7 +191,6 @@ export default function ScreensDashboard() {
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 sm:py-2 text-base sm:text-xs text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white w-full sm:w-60 transition-all shadow-sm"
             />
           </div>
-      <ScreenControlsPanel />
 
           <select
             value={sortBy}
