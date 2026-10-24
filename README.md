@@ -289,7 +289,9 @@ docker compose up -d
 
 An Electron kiosk app that plays a screen's assigned content full screen on a Windows PC.
 
-**Flow:** open the `.exe` → full screen → Screen ID modal → Submit → the screen's content plays (`/view/screen/<id>?kiosk=1`, which hides all player controls).
+**Flow:** download `ScreenPlayer.exe` using the sidebar's **Download Desktop App** link → open the EXE → Screen ID modal → Submit → the assigned content plays full screen. The application retains its XOS branding and existing Windows shortcuts.
+
+Website assignments open directly in the player's website view. Ordinary links, `target="_blank"`, and HTTP/HTTPS `window.open()` requests navigate inside the same kiosk window. A touch-friendly **Back** button stays 24px from the bottom right, above website content, including cross-origin pages. It is disabled at the start of history; changing the screen or assigned website clears the previous history. The button is hidden for local media. Non-HTTP/HTTPS top-level website navigation and popup requests are blocked. Remote websites cannot access the local player command bridge.
 
 | Key | Action |
 |---|---|
@@ -297,15 +299,19 @@ An Electron kiosk app that plays a screen's assigned content full screen on a Wi
 | `Esc` | Closes the modal and returns to the current content |
 | `Ctrl + Shift + Q` | Quits the player |
 
-- The app checks the CMS every 30 seconds and reloads when the screen's assigned asset changes. If the page fails to load, it retries every 10 seconds.
-- The last server and Screen ID are saved in `%APPDATA%\TR Fastenings Screen Player\config.json`.
+- The app syncs the assignment once at launch, caches downloaded media locally, and subscribes to Ably change notifications. Changes trigger a debounced sync; unchanged assignments keep playing. If the CMS is unavailable at launch, the last cached assignment is used. Live websites still require network access.
+- The last server and Screen ID are saved in Electron's per-user `userData/config.json` directory. Existing XOS settings and shortcuts remain compatible.
 - The default server address is built into the `.exe` from the `CMS_URL` GitHub Actions variable (Settings → Secrets and variables → Actions → Variables). If it's empty, the modal asks for it ("Server settings").
 
 ```bash
 cd desktop
-npm install
+npm ci
 npm start      # run locally
-npm run dist   # build desktop/dist/TRFasteningsScreenPlayer-<version>.exe
+npm run test:navigation # real Electron navigation integration check
+npm run dist   # build desktop/dist/ScreenPlayer.exe (Windows x64 portable)
+npm run release # navigation check + build + verified copy to public/ScreenPlayer.exe
 ```
 
-**CI:** `.github/workflows/build-desktop.yml` runs on every push to `main`. It builds the portable `.exe` on `windows-latest` and uploads it as the `TRFasteningsScreenPlayer-windows` artifact. To download it, open the run under the repo's **Actions** tab.
+Run the release command on Windows with Node.js and npm installed. The first install/build may download Electron and electron-builder tools. The release script compares SHA-256 hashes after copying the build. Include `public/ScreenPlayer.exe` in the CMS deployment; the sidebar serves it at `/ScreenPlayer.exe`.
+
+The automated navigation check uses a hidden Electron window and local HTTP fixtures. It covers ordinary links, new-window links, scripted popups, cross-origin Back navigation, disabled state, bottom-right positioning after resizing, assignment history reset, hiding controls for media, preload isolation, and preventing additional windows. It exits nonzero on failure. A packaged-EXE smoke test should also confirm startup, screen assignment, website navigation, existing video controls, and the Screen ID keyboard shortcuts on the target Windows display.

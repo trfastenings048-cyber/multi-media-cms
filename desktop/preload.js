@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld('player', {
+// Never expose kiosk commands to remotely hosted websites or child frames.
+if (process.isMainFrame && location.protocol === 'file:') contextBridge.exposeInMainWorld('player', {
   submit: (payload) => ipcRenderer.invoke('overlay:submit', payload),
   cancel: () => ipcRenderer.send('overlay:cancel'),
   reset: () => ipcRenderer.send('player:reset'),

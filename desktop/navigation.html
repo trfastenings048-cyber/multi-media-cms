@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+  <title>Player navigation</title>
+  <style>
+    body { margin: 0; background: transparent; }
+    button { width: 104px; height: 48px; border: 1px solid #93c5fd; border-radius: 12px; background: #2563eb; color: white; font: 600 16px system-ui; cursor: pointer; }
+    button:hover:enabled { background: #1d4ed8; }
+    button:disabled { background: #334155; color: #cbd5e1; cursor: default; }
+    button:focus-visible { outline: 3px solid white; outline-offset: -5px; }
+  </style>
+</head>
+<body><button id="back" type="button" disabled aria-label="Go back">← Back</button><script src="navigation-renderer.js"></script></body>
+</html>

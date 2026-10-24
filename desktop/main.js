@@ -5,6 +5,7 @@ const { Readable } = require('stream')
 const { pipeline } = require('stream/promises')
 const { pathToFileURL } = require('url')
 const Ably = require('ably')
+const { createNavigation } = require('./navigation')
 
 // Chromium can promote playing video to a hardware surface above DOM layers.
 // Keep video in the normal compositor so the always-visible HTML controls remain on top.
@@ -23,6 +24,7 @@ const SYNC_DEBOUNCE_MS = 2_500
 let win = null
 let contentView = null
 let overlayView = null
+let navigation = null
 let current = null // { serverUrl, screenId }
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -137,6 +139,7 @@ function readSavedContent(screenId) {
 }
 
 function show(params) {
+  navigation.setActive(false)
   const query = new URLSearchParams(params).toString()
   contentView.webContents.loadFile(path.join(__dirname, 'player.html'), { search: query })
 }
@@ -144,6 +147,10 @@ function show(params) {
 function showAsset(asset) {
   if (!asset) return show({ kind: 'saver' })
   const mime = asset.mimeType || ''
+  if (asset.url && /^https?:\/\//i.test(asset.url)) {
+    navigation.loadWebsite(asset.url).catch((error) => console.error('Website load failed', error))
+    return
+  }
   const kind = asset.url
     ? 'website'
     : mime.startsWith('image/') ? 'image'
@@ -421,15 +428,16 @@ function createWindow() {
 
   // Added last = drawn on top.
   win.contentView.addChildView(contentView)
+  navigation = createNavigation({ win, contentView, WebContentsView, ipcMain })
   win.contentView.addChildView(overlayView)
   layoutViews()
   win.on('resize', layoutViews)
 
   for (const wc of [contentView.webContents, overlayView.webContents]) {
     attachShortcuts(wc)
-    // Keep everything inside the kiosk: no popups or new windows.
-    wc.setWindowOpenHandler(() => ({ action: 'deny' }))
   }
+  attachShortcuts(navigation.toolbar.webContents)
+  overlayView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 
   contentView.webContents.loadURL('about:blank')
   overlayView.webContents.loadFile(path.join(__dirname, 'overlay.html'))
@@ -439,6 +447,9 @@ function createWindow() {
   })
 
   win.on('closed', () => {
+    for (const view of [contentView, overlayView]) {
+      if (view && !view.webContents.isDestroyed()) view.webContents.close()
+    }
     win = contentView = overlayView = null
   })
 }

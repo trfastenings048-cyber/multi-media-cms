@@ -8,7 +8,9 @@
   "author": "TR Fastenings",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win portable --x64 --publish never"
+    "dist": "electron-builder --win portable --x64 --publish never",
+    "test:navigation": "electron navigation-check.js",
+    "release": "npm run test:navigation && npm run dist && electron navigation-check.js --packaged && node publish-build.js"
   },
   "devDependencies": {
     "electron": "^44.9.0",
@@ -22,6 +24,10 @@
     },
     "files": [
       "main.js",
+      "navigation.js",
+      "navigation-preload.js",
+      "navigation-renderer.js",
+      "navigation.html",
       "preload.js",
       "overlay.html",
       "player.html",
@@ -32,7 +38,7 @@
     "win": {
       "icon": "icon.ico",
       "target": "portable",
-      "artifactName": "XOS-${version}.exe"
+      "artifactName": "ScreenPlayer.exe"
     }
   },
   "dependencies": {
