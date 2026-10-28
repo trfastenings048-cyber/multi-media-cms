@@ -8,7 +8,7 @@
   "author": "TR Fastenings",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win portable --x64 --publish never",
+    "dist": "electron-builder --win nsis --x64 --publish never",
     "test:navigation": "electron navigation-check.js",
     "release": "npm run test:navigation && npm run dist && electron navigation-check.js --packaged && node publish-build.js"
   },
@@ -22,6 +22,10 @@
     "directories": {
       "output": "dist"
     },
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US"
+    ],
     "files": [
       "main.js",
       "navigation.js",
@@ -31,14 +35,22 @@
       "preload.js",
       "overlay.html",
       "player.html",
+      "startup.html",
       "build-config.json",
       "icon.png",
       "package.json"
     ],
     "win": {
       "icon": "icon.ico",
-      "target": "portable",
-      "artifactName": "ScreenPlayer.exe"
+      "target": "nsis",
+      "artifactName": "XOS-Setup.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "XOS"
     }
   },
   "dependencies": {

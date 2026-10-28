@@ -93,8 +93,8 @@ export default function AppSidebar({ onNavigate, compact = false }: AppSidebarPr
       <div className={cn("space-y-3 border-t border-zinc-200 dark:border-zinc-800 pb-safe", compact ? "p-2" : "p-4")}>
         {/* Keep the player download available in the mobile sidebar as well. */}
         <a
-          href="/ScreenPlayer.exe"
-          download="ScreenPlayer.exe"
+          href="/XOS-Setup.exe"
+          download="XOS-Setup.exe"
           title={compact ? "Download Desktop App (Windows)" : undefined}
           aria-label="Download Desktop App"
           className={cn(

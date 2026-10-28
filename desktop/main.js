@@ -1,4 +1,4 @@
-const { app, BaseWindow, WebContentsView, Menu, ipcMain, net, shell } = require('electron')
+const { app, BaseWindow, WebContentsView, Menu, ipcMain, net } = require('electron')
 const fs = require('fs')
 const path = require('path')
 const { Readable } = require('stream')
@@ -6,10 +6,6 @@ const { pipeline } = require('stream/promises')
 const { pathToFileURL } = require('url')
 const Ably = require('ably')
 const { createNavigation } = require('./navigation')
-
-// Chromium can promote playing video to a hardware surface above DOM layers.
-// Keep video in the normal compositor so the always-visible HTML controls remain on top.
-app.disableHardwareAcceleration()
 
 // No polling and no retry loops. The player syncs what is assigned to its screen ONCE per
 // launch, saves it to local disk, and plays from the local copy. If the server cannot be
@@ -182,6 +178,15 @@ async function loadScreen(live = false) {
   syncing = true
   const target = current
   try {
+    // A previous download is immediately playable. Show it before contacting the CMS so a
+    // slow or unavailable network never leaves the display blank at launch.
+    if (!live) {
+      const saved = readSavedContent(target.screenId)
+      if (saved !== undefined) {
+        lastShownKey = assetKey(saved)
+        showAsset(saved)
+      }
+    }
     let asset
     try {
       asset = await syncContent(target)
@@ -197,7 +202,7 @@ async function loadScreen(live = false) {
       }
     }
     if (current !== target) return // screen was switched while syncing
-    if (live && assetKey(asset) === lastShownKey) return
+    if (assetKey(asset) === lastShownKey) return
     lastShownKey = assetKey(asset)
     showAsset(asset)
   } finally {
@@ -339,54 +344,6 @@ function attachShortcuts(webContents) {
   })
 }
 
-// ── Install location + shortcuts ──────────────────────────────────────────────
-// A portable exe runs from a temporary folder that is deleted on exit, so anything pinned
-// to the taskbar while it is running would break. On launch the exe therefore keeps a
-// permanent copy of itself in %LOCALAPPDATA%\XOS and points the Desktop and Start menu
-// shortcuts at that copy. Pin the Desktop/Start menu "XOS" shortcut to the taskbar (or
-// pin the running app: Windows resolves it to the shortcut/permanent copy).
-
-function ensureInstalled() {
-  if (process.platform !== 'win32' || !app.isPackaged) return
-  try {
-    const source = process.env.PORTABLE_EXECUTABLE_FILE
-    if (!source || !fs.existsSync(source)) return
-
-    const installDir = path.join(process.env.LOCALAPPDATA || app.getPath('appData'), 'XOS')
-    const target = path.join(installDir, 'XOS.exe')
-    const sourceStat = fs.statSync(source)
-    const targetStat = fs.existsSync(target) ? fs.statSync(target) : null
-    if (path.resolve(source).toLowerCase() !== path.resolve(target).toLowerCase() &&
-        (!targetStat || targetStat.size !== sourceStat.size || targetStat.mtimeMs < sourceStat.mtimeMs)) {
-      fs.mkdirSync(installDir, { recursive: true })
-      fs.copyFileSync(source, `${target}.tmp`)
-      fs.renameSync(`${target}.tmp`, target)
-    }
-
-    const options = { target, cwd: installDir, icon: target, iconIndex: 0, description: 'XOS', appUserModelId: 'com.trfastenings.screenplayer' }
-    const links = [
-      path.join(app.getPath('desktop'), 'XOS.lnk'),
-      path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'XOS.lnk'),
-    ]
-    const marker = path.join(app.getPath('userData'), 'shortcuts-created')
-    const firstRun = !fs.existsSync(marker)
-    for (const link of links) {
-      if (fs.existsSync(link)) {
-        // Repoint existing shortcuts (e.g. ones made by an older build).
-        if (shell.readShortcutLink(link).target !== target) shell.writeShortcutLink(link, 'update', options)
-      } else if (firstRun) {
-        shell.writeShortcutLink(link, 'create', options)
-      }
-    }
-    if (firstRun) {
-      fs.mkdirSync(path.dirname(marker), { recursive: true })
-      fs.writeFileSync(marker, '1')
-    }
-  } catch (error) {
-    console.error('Failed to install shortcuts', error)
-  }
-}
-
 // ── Window ────────────────────────────────────────────────────────────────────
 
 function layoutViews() {
@@ -405,6 +362,7 @@ function createWindow() {
     kiosk: true,
     frame: false,
     autoHideMenuBar: true,
+    show: false,
   })
 
   contentView = new WebContentsView({
@@ -439,11 +397,22 @@ function createWindow() {
   attachShortcuts(navigation.toolbar.webContents)
   overlayView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 
-  contentView.webContents.loadURL('about:blank')
+  let startupReady = false
+  let overlayReady = false
+  const revealWindow = () => {
+    if (startupReady && overlayReady && !win.isDestroyed()) win.show()
+  }
+  contentView.webContents.once('did-finish-load', () => {
+    startupReady = true
+    revealWindow()
+  })
+  contentView.webContents.loadFile(path.join(__dirname, 'startup.html'))
   overlayView.webContents.loadFile(path.join(__dirname, 'overlay.html'))
   overlayView.setVisible(false)
   overlayView.webContents.once('did-finish-load', () => {
     if (!openSavedScreen()) showOverlay()
+    overlayReady = true
+    revealWindow()
   })
 
   win.on('closed', () => {
@@ -477,7 +446,6 @@ if (!app.requestSingleInstanceLock()) {
     app.setAppUserModelId('com.trfastenings.screenplayer')
     Menu.setApplicationMenu(null)
     createWindow()
-    ensureInstalled()
   })
 
   app.on('before-quit', stopRealtime)
